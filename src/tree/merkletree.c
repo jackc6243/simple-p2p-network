@@ -1,5 +1,5 @@
-#include "/include/tree/merkletree.h"
-#include "/include/crypt/sha256.h"
+#include "../../include/tree/merkletree.h"
+#include "../../include/crypt/sha256.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -82,8 +82,8 @@ struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, in
     }
 
     // Here we found the hash given
-    if ((is_expected && strcmp(root->expected, hash) == 0) ||
-        (!is_expected && strcmp(root->computed, hash) == 0)) {
+    if ((is_expected && strcmp(root->expected_hash, hash) == 0) ||
+        (!is_expected && strcmp(root->computed_hash, hash) == 0)) {
         return root;
     }
 
@@ -102,8 +102,8 @@ void store_min_hash(struct merkle_tree_node* root, struct merkle_tree_node** arr
     }
 
     // if root node is complete
-    if (strcmp(root->expected, root->computed) == 0) {
-        arr[index] = root;
+    if (strcmp(root->expected_hash, root->computed_hash) == 0) {
+        arr[*index] = root;
         *index += 1;
         return;
     }
@@ -139,7 +139,7 @@ void compute_all_hashes(struct merkle_tree_node* root) {
     compute_all_hashes(root->right);
 
     // append left hash and right hash together
-    char* new_hash = (char* new_hash) malloc(sizeof(char) * SHA256_CHUNK_SZ * 2);
+    char* new_hash = (char*)malloc(sizeof(char) * SHA256_CHUNK_SZ * 2);
     memcpy(new_hash, root->left->computed_hash, SHA256_CHUNK_SZ);
     memcpy(new_hash + SHA256_CHUNK_SZ, root->right->computed_hash, SHA256_CHUNK_SZ);
 

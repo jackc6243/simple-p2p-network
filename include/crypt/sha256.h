@@ -2,6 +2,7 @@
 #define BTYDE_CRYPT_SHA256
 
 #include <stdint.h>
+#include <stdio.h>
 
 #define SHA256_CHUNK_SZ (64)
 #define SHA256_INT_SZ (8)
@@ -29,5 +30,7 @@ void sha256_output_hex(struct sha256_compute_data* data,
 	char hexbuf[SHA256_CHUNK_SZ]);
 
 void sha256_string_hash(const void* data, size_t size, uint8_t* final_hash);
+
+int sha256_file_hash(FILE* file, int size, char* final_hash);
 
 #endif

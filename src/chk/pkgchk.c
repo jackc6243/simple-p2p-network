@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <math.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <sys/stat.h>
-#include "/include/tree/merkletree.h"
-#include "/include/chk/pkgchk.h"
+#include "../../include/tree/merkletree.h"
+#include "../../include/chk/pkgchk.h"
 
 #define MAX_LINE_LEN 2048
 #define MAX_IDENT 1024
@@ -27,42 +28,59 @@ void free_array(struct merkle_tree_node** arr, int l) {
     free(arr);
 }
 
-int parse_info(char* buffer, FILE* file, char* name, char delim, void** address, int is_string, int l) {
+/*
+Parse a line in the file given using a given buffer.
+The expected format of the line is as follow
+<name>:<address>
+If format is expected, will return 1 (The address can be null.)
+The is_string is a boolean that decide how we will interpret the type
+of the address and l is the length of the string if string is expected
+*/
+int parse_info(char* buffer, FILE* file, char* name, char delim, void* address, int is_string, int l) {
     char* tok;
     if (fgets(buffer, MAX_LINE_LEN, file)) {
-        tok = strtok(buffer, delim);
+        tok = strtok(buffer, &delim);
         // making sure the format is correct
         if (strcmp(tok, name)) {
             return FALSE;
         }
 
         if (address == NULL && tok != NULL) {
-            // When this is no expected data but data has been received
+            // When there is no expected data but data has been received
             return FALSE;
         } else if (is_string) {
             // When data is expected to be string
-            tok = strtok(NULL, '\n');
+            tok = (char*)strtok(NULL, "\n");
             char* data = (char*)malloc(sizeof(l));
             memcpy(data, tok, l);
-            *address = data;
+            *((char**)address) = data;
         } else {
             // when data is expected to be int
             int num;
             if (sscanf(tok, "%d", &num) != 1) {
                 return FALSE;
             }
-            *address = num;
+            *((int*)address) = num;
         }
     } else { return FALSE; }
 
     return TRUE;
 }
 
+/*
+Parse a lines of hashes in format from given file:
+\t<Hash:64 character>
+...
+Each hash will be converted to a tree node and stored in the given array all_nodes
+The start and end integer tells us the index to which store in the array.
+
+Will return 1 if succesfully parsed.
+*/
 int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, int start, int end, int isChunk) {
 
     for (int i = start; i < end; i++) {
         if (fgets(buffer, MAX_LINE_LEN, file) && buffer[0] == '\t') {
-            // what to do with each hash
+            // For each hash, create a tree node
             all_nodes[i] = create_tree_node();
             if (isChunk) {
                 all_nodes[i]->is_leaf = TRUE;
@@ -91,21 +109,20 @@ struct bpkg_obj* bpkg_load(const char* path) {
     struct bpkg_obj* obj = (struct bpkg_obj*)malloc(sizeof(struct bpkg_obj));
 
     FILE* file = fopen(path, "r");
-    char* buffer[MAX_LINE_LEN] = { 0 };
-    char* tok;
+    char buffer[MAX_LINE_LEN] = { 0 };
 
     // Parsing infos
     int nhash, size;
-    if (!parse_info(buffer, file, "ident", ':', &(obj->ident), TRUE, MAX_IDENT) ||
-        !parse_info(buffer, file, "filename", ':', &(obj->filename), TRUE, MAX_FILENAME) ||
-        !parse_info(buffer, file, "size", ':', &size, FALSE, 0) ||
-        !parse_info(buffer, file, "nhash", ':', &nhash, FALSE, 0) ||
+    if (!parse_info(buffer, file, "ident", ':', (void*)&(obj->ident), TRUE, MAX_IDENT) ||
+        !parse_info(buffer, file, "filename", ':', (void*)&(obj->filename), TRUE, MAX_FILENAME) ||
+        !parse_info(buffer, file, "size", ':', (void*)&size, FALSE, 0) ||
+        !parse_info(buffer, file, "nhash", ':', (void*)&nhash, FALSE, 0) ||
         !parse_info(buffer, file, "hashes", ':', NULL, TRUE, 0)) {
         free(obj);
         return NULL;
     }
 
-    // Checking nhashes is valid, it must be in the form 2^(h-1) - 1
+    // Checking nhash is valid, it must be in the form 2^(h-1) - 1
     float temp = log2(nhash + 1);
     if (ceil(temp) != floor(temp)) {
         // nhash invalid
@@ -123,27 +140,27 @@ struct bpkg_obj* bpkg_load(const char* path) {
         return NULL;
     }
 
-    // Parsing nchunks
-    int nchunks;
-    if (!parse_info(buffer, file, "nchunks", ':', &nchunks, FALSE, 0) ||
+    // Parsing nchunk
+    int nchunk;
+    if (!parse_info(buffer, file, "nchunk", ':', &nchunk, FALSE, 0) ||
         !parse_info(buffer, file, "chunks", ':', NULL, TRUE, 0)) {
         free(obj);
         return NULL;
     }
 
-    // Checking nchunks is valid, it must be in the form 2^(h-1) and it must be the same h as nhash
-    temp = log2(nchunks);
+    // Checking nchunk is valid, it must be in the form 2^(h-1) and it must be the same h as nhash
+    temp = log2(nchunk);
     if (ceil(temp) != floor(temp) || (int)temp != height - 1) {
-        // nchunks invalid
+        // nchunk invalid
         free(obj);
         return NULL;
     }
-    obj->nchunks = nchunks;
+    obj->nchunk = nchunk;
 
     // Parsing chunks
-    if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunks, TRUE)) {
+    if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunk, TRUE)) {
         // if fail to parse all required rows, free memory
-        free_array(all_nodes, nhash + nchunks);
+        free_array(all_nodes, nhash + nchunk);
         free(obj);
         return NULL;
     }
@@ -155,7 +172,7 @@ struct bpkg_obj* bpkg_load(const char* path) {
 
 struct bpkg_query* initiate_query(int size) {
     struct bpkg_query* query = (struct bpkg_query*)malloc(sizeof(struct bpkg_query));
-    query->hash = (char**)malloc(sizeof(char*) * size);
+    query->hashes = (char**)malloc(sizeof(char*) * size);
     query->len = size;
 
     return query;
@@ -170,24 +187,24 @@ struct bpkg_query* initiate_query(int size) {
  * 		If the file exists, hashes[0] should contain "File Exists"
  *		If the file does not exist, hashes[0] should contain "File Created"
  */
-struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg) {
+struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(1);
     // Initiating message
-    query->hash[0] = (char*)calloc(sizeof(char) * 20);
+    query->hashes[0] = (char*)calloc(20, sizeof(char));
+    FILE* file;
 
     if (access(bpkg->filename, F_OK) == 0) {
         // file exists
-        FILE* file = fopen(bpkg->filename, "r");
+        file = fopen(bpkg->filename, "r");
         char str[] = "File Exists";
-        memcpy(query->hash[0], str, sizeof(str));
+        memcpy(query->hashes[0], str, sizeof(str));
     } else {
-        // file doesn't exist
-        // Creating file
-        FILE* file = fopen(bpkg->filename, "w");
+        // file doesn't exist, will creating file instead
+        file = fopen(bpkg->filename, "w");
         // Extending file size
-        ftruncate(fileno(fp), (bpkg->nchunks) * CHUNK_SIZE * 2 - 1);
+        ftruncate(fileno(file), (bpkg->nchunk) * CHUNK_SIZE * 2 - 1);
         char str[] = "File Created";
-        memcpy(query->hash[0], str, sizeof(str));
+        memcpy(query->hashes[0], str, sizeof(str));
     }
     fclose(file);
     return query;
@@ -199,10 +216,12 @@ struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg) {
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
-    struct bpkg_query query = { 0 };
-    query.hash = bpkg->all_nodes;
-    query.len = bpkg->nchunks + bpkg->nhashes;
+struct bpkg_query* bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
+    struct bpkg_query* query = initiate_query(bpkg->nchunk + bpkg->nhash);
+    for (int i = 0; i < bpkg->nchunk + bpkg->nhash; i++) {
+        // looping through all hashes in bpkg object.
+        query->hashes[i] = bpkg->all_nodes[i]->computed_hash;
+    }
 
     return query;
 }
@@ -218,18 +237,19 @@ struct bpkg_query bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
+struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     char* hash) {
-    struct bpkg_query query;
+    struct bpkg_query* query;
 
     int height = bpkg->tree->height;
     struct merkle_tree* node = find_hash(bpkg->tree->root, hash, 1, &height);
     if (node != NULL) {
         // found the node with the same hash string
         query = initiate_query((int)pow(2, height + 1) - 1);
-        store_hash(node, query->hash, 0);
+        store_hash(node, query->hashes, 0);
+    } else {
+        query = initiate_query(0);
     }
-    query = initiate_query(0);
     return query;
 }
 
@@ -239,12 +259,12 @@ struct bpkg_query bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
-    struct bpkg_query* query = initiate_query(bpkg->nhashes);
+struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
+    struct bpkg_query* query = initiate_query(bpkg->nhash);
     FILE* file = fopen(bpkg->filename, "r");
 
     int i;
-    for (i = 0; i < bpkg->nhashes; i++) {
+    for (i = 0; i < bpkg->nhash; i++) {
         if (!sha256_file_hash(file, CHUNK_SIZE, query->hashes[i])) {
             // File incomplete
             break;
@@ -269,9 +289,9 @@ struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
+struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     // initiate query
-    struct bpkg_query qry = initiate_query((bpkg->nchunks / 2) + 1);
+    struct bpkg_query* query = initiate_query((bpkg->nchunk / 2) + 1);
 
     int index = 0;
     store_min_hash(bpkg->tree->root, query->hashes, &index);
@@ -280,7 +300,7 @@ struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     query->len = index + 1;
     // remove unnecessary length
     query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
-    return qry;
+    return query;
 }
 
 

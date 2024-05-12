@@ -8,9 +8,11 @@ INCLUDE=-Iinclude
 # Required for Part 1 - Make sure it outputs a .o file
 # to either objs/ or ./
 # In your directory
-pkgchk.o: src/chk/pkgchk.c
+pkgchk.o: src/chk/pkgchk.c merkletree.o
 	$(CC) -c $^ $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
+merkletree.o: src/tree/merkletree.c
+	$(CC) -c $^ $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 pkgchecker: src/pkgmain.c src/chk/pkgchk.c
 	$(CC) $^ $(INCLUDE) $(CFLAGS) $(LDFLAGS) -o $@

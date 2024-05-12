@@ -1,5 +1,5 @@
-#ifndef MERKLETREE_HEADER
-#define MERKLETREE_HEADER
+#ifndef MERKLETREE_H
+#define MERKLETREE_H
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -15,6 +15,7 @@ struct merkle_tree_node {
 };
 struct merkle_tree {
     struct merkle_tree_node* root;
+    struct merkle_tree_node** all_nodes;
     size_t n_nodes;
     size_t height;
 };

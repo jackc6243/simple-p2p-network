@@ -41,7 +41,7 @@ struct bpkg_obj* bpkg_load(const char* path);
  * 		If the file exists, hashes[0] should contain "File Exists"
  *		If the file does not exist, hashes[0] should contain "File Created"
  */
-struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg);
+struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg);
 
 /**
  * Retrieves a list of all hashes within the package/tree
@@ -49,7 +49,7 @@ struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg);
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_all_hashes(struct bpkg_obj* bpkg);
+struct bpkg_query* bpkg_get_all_hashes(struct bpkg_obj* bpkg);
 
 /**
  * Retrieves all completed chunks of a package object
@@ -57,7 +57,7 @@ struct bpkg_query bpkg_get_all_hashes(struct bpkg_obj* bpkg);
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg);
+struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg);
 
 
 /**
@@ -70,7 +70,7 @@ struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg);
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg);
+struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg);
 
 
 /**
@@ -84,7 +84,7 @@ struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg);
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg, char* hash);
+struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg, char* hash);
 
 
 /**

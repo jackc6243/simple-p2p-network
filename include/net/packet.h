@@ -21,10 +21,9 @@ union btide_payload {
 
 struct btide_packet {
     uint16_t msg_code;
-    uint16_t error
+    uint16_t error;
     union btide_payload pl;
 };
-
 
 
 
