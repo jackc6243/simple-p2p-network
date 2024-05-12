@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 
-
 /**
  * Query object, allows you to assign
  * hash strings to it.
@@ -16,8 +15,16 @@ struct bpkg_query {
 	size_t len;
 };
 
-//TODO: Provide a definition
-struct bpkg_obj;
+//bpkg object that stores all information relating to bpkg file
+struct bpkg_obj {
+	char* ident;
+	char* filename;
+	uint32_t size;
+	uint32_t nhash;
+	uint32_t nchunk;
+	struct merkle_tree* tree;
+	struct merkle_tree_node** all_nodes;
+};
 
 
 /**
@@ -63,7 +70,7 @@ struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg);
  * @return query_result, This structure will contain a list of hashes
  * 		and the number of hashes that have been retrieved
  */
-struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg); 
+struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg);
 
 
 /**

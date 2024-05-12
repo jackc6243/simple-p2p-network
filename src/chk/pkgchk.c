@@ -2,25 +2,21 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <math.h>
+#include <unistd.h>
 
 #include <sys/stat.h>
-#include "../tree/merkletree.h"
+#include "/include/tree/merkletree.h"
+#include "/include/chk/pkgchk.h"
 
 #define MAX_LINE_LEN 2048
 #define MAX_IDENT 1024
 #define MAX_FILENAME 256
 #define HASH_SIZE 64
+#define CHUNK_SIZE 4096
 
 #define TRUE 1
 #define FALSE 0
-
-// PART 1
-struct bpkg_obj {
-    char* ident;
-    char* filename;
-    uint32_t size;
-    struct merkle_tree* tree;
-};
 
 void free_array(struct merkle_tree_node** arr, int l) {
     for (int i = 0; i < l; i++) {
@@ -88,6 +84,7 @@ struct bpkg_obj* bpkg_load(const char* path) {
     // check if path is valid
     struct stat st;
     if (stat(path, &st) < 0) {
+        printf("Path invalid\n");
         return NULL;
     }
 
@@ -108,13 +105,15 @@ struct bpkg_obj* bpkg_load(const char* path) {
         return NULL;
     }
 
-    int height;
-    // Checking size is valid
-
-
-    // Checking nhashes is valid
-
-
+    // Checking nhashes is valid, it must be in the form 2^(h-1) - 1
+    float temp = log2(nhash + 1);
+    if (ceil(temp) != floor(temp)) {
+        // nhash invalid
+        free(obj);
+        return NULL;
+    }
+    int height = (int)temp + 1;
+    obj->nhash = nhash;
 
     // Parsing Hashes
     struct merkle_tree_node** all_nodes = (struct merkle_tree_node**)malloc(sizeof(struct merkle_tree_node*) * nhash);
@@ -124,20 +123,42 @@ struct bpkg_obj* bpkg_load(const char* path) {
         return NULL;
     }
 
-    // Parsing nchunks and checking its validity
+    // Parsing nchunks
     int nchunks;
-
-    // Parsing chunks
-    if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunks, TRUE)) {
-        free_array(all_nodes, nhash);
+    if (!parse_info(buffer, file, "nchunks", ':', &nchunks, FALSE, 0) ||
+        !parse_info(buffer, file, "chunks", ':', NULL, TRUE, 0)) {
         free(obj);
         return NULL;
     }
 
-    obj->tree = level_order_create_tree(all_nodes, nhash + nchunks, height);
-    free(all_nodes); // This does not free the nodes inside the array, just the array itself
+    // Checking nchunks is valid, it must be in the form 2^(h-1) and it must be the same h as nhash
+    temp = log2(nchunks);
+    if (ceil(temp) != floor(temp) || (int)temp != height - 1) {
+        // nchunks invalid
+        free(obj);
+        return NULL;
+    }
+    obj->nchunks = nchunks;
+
+    // Parsing chunks
+    if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunks, TRUE)) {
+        // if fail to parse all required rows, free memory
+        free_array(all_nodes, nhash + nchunks);
+        free(obj);
+        return NULL;
+    }
+
+    obj->tree = level_order_create_tree(all_nodes, height); // create the merkle tree
 
     return obj;
+}
+
+struct bpkg_query* initiate_query(int size) {
+    struct bpkg_query* query = (struct bpkg_query*)malloc(sizeof(struct bpkg_query));
+    query->hash = (char**)malloc(sizeof(char*) * size);
+    query->len = size;
+
+    return query;
 }
 
 /**
@@ -149,7 +170,28 @@ struct bpkg_obj* bpkg_load(const char* path) {
  * 		If the file exists, hashes[0] should contain "File Exists"
  *		If the file does not exist, hashes[0] should contain "File Created"
  */
-struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg);
+struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg) {
+    struct bpkg_query* query = initiate_query(1);
+    // Initiating message
+    query->hash[0] = (char*)calloc(sizeof(char) * 20);
+
+    if (access(bpkg->filename, F_OK) == 0) {
+        // file exists
+        FILE* file = fopen(bpkg->filename, "r");
+        char str[] = "File Exists";
+        memcpy(query->hash[0], str, sizeof(str));
+    } else {
+        // file doesn't exist
+        // Creating file
+        FILE* file = fopen(bpkg->filename, "w");
+        // Extending file size
+        ftruncate(fileno(fp), (bpkg->nchunks) * CHUNK_SIZE * 2 - 1);
+        char str[] = "File Created";
+        memcpy(query->hash[0], str, sizeof(str));
+    }
+    fclose(file);
+    return query;
+};
 
 /**
  * Retrieves a list of all hashes within the package/tree
@@ -158,38 +200,12 @@ struct bpkg_query bpkg_file_check(struct bpkg_obj* bpkg);
  * 		and the number of hashes that have been retrieved
  */
 struct bpkg_query bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
-    struct bpkg_query qry = { 0 };
+    struct bpkg_query query = { 0 };
+    query.hash = bpkg->all_nodes;
+    query.len = bpkg->nchunks + bpkg->nhashes;
 
-    return qry;
+    return query;
 }
-
-/**
- * Retrieves all completed chunks of a package object
- * @param bpkg, constructed bpkg object
- * @return query_result, This structure will contain a list of hashes
- * 		and the number of hashes that have been retrieved
- */
-struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
-    struct bpkg_query qry = { 0 };
-    return qry;
-}
-
-
-/**
- * Gets the mininum of hashes to represented the current completion state
- * Example: If chunks representing start to mid have been completed but
- * 	mid to end have not been, then we will have (N_CHUNKS/2) + 1 hashes
- * 	outputted
- *
- * @param bpkg, constructed bpkg object
- * @return query_result, This structure will contain a list of hashes
- * 		and the number of hashes that have been retrieved
- */
-struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
-    struct bpkg_query qry = { 0 };
-    return qry;
-}
-
 
 /**
  * Retrieves all chunk hashes given a certain an ancestor hash (or itself)
@@ -204,8 +220,66 @@ struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
  */
 struct bpkg_query bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     char* hash) {
+    struct bpkg_query query;
 
-    struct bpkg_query qry = { 0 };
+    int height = bpkg->tree->height;
+    struct merkle_tree* node = find_hash(bpkg->tree->root, hash, 1, &height);
+    if (node != NULL) {
+        // found the node with the same hash string
+        query = initiate_query((int)pow(2, height + 1) - 1);
+        store_hash(node, query->hash, 0);
+    }
+    query = initiate_query(0);
+    return query;
+}
+
+/**
+ * Retrieves all completed chunks of a package object
+ * @param bpkg, constructed bpkg object
+ * @return query_result, This structure will contain a list of hashes
+ * 		and the number of hashes that have been retrieved
+ */
+struct bpkg_query bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
+    struct bpkg_query* query = initiate_query(bpkg->nhashes);
+    FILE* file = fopen(bpkg->filename, "r");
+
+    int i;
+    for (i = 0; i < bpkg->nhashes; i++) {
+        if (!sha256_file_hash(file, CHUNK_SIZE, query->hashes[i])) {
+            // File incomplete
+            break;
+        }
+    }
+
+    return query;
+}
+
+
+/**
+ * Gets the mininum of hashes to represented the current completion state
+ * Example: If chunks representing start to mid have been completed but
+ * 	mid to end have not been, then we will have (N_CHUNKS/2) + 1 hashes
+ * 	outputted
+ *
+ * Gets only the required/min hashes to represent the current completion state
+ * Return the smallest set of hashes of completed branches to represent the
+ * completion state of the file.
+ *
+ * @param bpkg, constructed bpkg object
+ * @return query_result, This structure will contain a list of hashes
+ * 		and the number of hashes that have been retrieved
+ */
+struct bpkg_query bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
+    // initiate query
+    struct bpkg_query qry = initiate_query((bpkg->nchunks / 2) + 1);
+
+    int index = 0;
+    store_min_hash(bpkg->tree->root, query->hashes, &index);
+
+    // index is now the last index
+    query->len = index + 1;
+    // remove unnecessary length
+    query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
     return qry;
 }
 
@@ -215,8 +289,12 @@ struct bpkg_query bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
  * the relevant queries above.
  */
 void bpkg_query_destroy(struct bpkg_query* qry) {
-    //TODO: Deallocate here!
-
+    for (int i = 0; i < qry->len; i++) {
+        free(qry->hashes[i]);
+        qry->hashes[i] = NULL;
+    }
+    free(qry->hashes);
+    free(qry);
 }
 
 /**
@@ -224,8 +302,14 @@ void bpkg_query_destroy(struct bpkg_query* qry) {
  * make sure it has been completely deallocated
  */
 void bpkg_obj_destroy(struct bpkg_obj* obj) {
-    //TODO: Deallocate here!
-
+    free(obj->ident);
+    free(obj->filename);
+    free(obj->all_nodes);
+    destroy_tree(obj->tree, TRUE);
+    obj->ident = NULL;
+    obj->filename = NULL;
+    obj->tree = NULL;
+    obj->size = 0;
 }
 
 

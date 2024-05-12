@@ -16,19 +16,18 @@ struct sha256_compute_data {
 };
 
 void sha256_calculate_chunk(struct sha256_compute_data* data,
-		uint8_t chunk[SHA256_CHUNK_SZ]);
+	uint8_t chunk[SHA256_CHUNK_SZ]);
 
 void sha256_compute_data_init(struct sha256_compute_data* data);
 
 void sha256_update(struct sha256_compute_data* data,
-		void* bytes, uint32_t size); 
+	void* bytes, uint32_t size);
 
-void sha256_finalize(struct sha256_compute_data* data, 
-		uint8_t hash[SHA256_INT_SZ]);
+void sha256_finalize(struct sha256_compute_data* data);
 
+void sha256_output_hex(struct sha256_compute_data* data,
+	char hexbuf[SHA256_CHUNK_SZ]);
 
-void sha256_output_hex(struct sha256_compute_data* data, 
-		char hexbuf[SHA256_CHUNK_SZ]);
+void sha256_string_hash(const void* data, size_t size, uint8_t* final_hash);
 
 #endif
-

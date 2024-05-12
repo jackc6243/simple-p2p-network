@@ -3,7 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
-#define SHA256K 64
+#define SHA256K (64)
+#define SHA256_BFLEN (1024)
 #define rotate_r(val, bits) (val >> bits | val << (32 - bits))
 
 //Constant List from: https://en.wikipedia.org/wiki/SHA-2#Pseudocode
@@ -163,10 +164,7 @@ void sha256_update(struct sha256_compute_data* data,
 
 //Derived from: https://en.wikipedia.org/wiki/SHA-2#Pseudocode
 //And https://github.com/LekKit/sha256/blob/master/sha256.c
-void sha256_finalize(struct sha256_compute_data* data,
-	uint8_t hash[SHA256_INT_SZ]) {
-
-
+void sha256_finalize(struct sha256_compute_data* data) {
 
 	data->last_chunk[data->chunk_size] = 0x80;
 	data->chunk_size++;
@@ -221,4 +219,45 @@ void sha256_output_hex(struct sha256_compute_data* data,
 	uint8_t hash[32] = { 0 };
 	sha256_output(data, hash);
 	bin_to_hex(hash, 32, hexbuf);
+}
+
+
+// A simple wrap function for hashing a string of size less than 1024
+void sha256_string_hash(const void* data, size_t size, uint8_t* final_hash) {
+	struct sha256_compute_data cdata = { 0 };
+	sha256_compute_data_init(&cdata);
+	sha256_update(&cdata, data, size);
+	sha256_finalize(&cdata);
+	sha256_output_hex(&cdata, final_hash);
+}
+
+// Hash a file at its current file pointer for size bytes and storing the final
+// hex value in final_hash
+int sha256_file_hash(FILE* file, int size, char* final_hash) {
+	int complete_file = 1;
+	struct sha256_compute_data cdata = { 0 };
+	int iterations = size / SHA256_BFLEN;
+	char buf[SHA256_BFLEN] = (char*)malloc(sizeof(char) * SHA256_BFLEN);
+	size_t nbytes = 0;
+
+	sha256_compute_data_init(&cdata);
+
+	for (int i = 0; i < iterations; i++) {
+		// Making sure that the expected number of bytes are read
+		if (nbytes = fread(buf, 1, SHA256_BFLEN, file) == SHA256_BFLEN) {
+			sha256_update(&cdata, &buf, SHA256_BFLEN);
+		} else {
+			// if the file falls short we will terminate the loop early
+			sha256_update(&cdata, buf, nbytes);
+			complete_file = 0;
+			break;
+		}
+	}
+
+	sha256_finalize(&cdata);
+	sha256_output_hex(&cdata, final_hash);
+	free(buf);
+
+	// returning 1 if file length was expected, 0 otherwise
+	return complete_file;
 }
