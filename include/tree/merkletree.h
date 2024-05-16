@@ -10,14 +10,14 @@ struct merkle_tree_node {
     struct merkle_tree_node* left;
     struct merkle_tree_node* right;
     int is_leaf;
-    char expected_hash[64]; //Refer to SHA256 Hexadecimal size
-    char computed_hash[64];
+    char expected_hash[65]; //Refer to SHA256 Hexadecimal size
+    char computed_hash[65];
 };
 struct merkle_tree {
     struct merkle_tree_node* root;
     struct merkle_tree_node** all_nodes;
     size_t n_nodes;
-    size_t height;
+    size_t max_depth;
 };
 
 struct merkle_tree_node* create_tree_node();

@@ -244,11 +244,10 @@ int sha256_file_hash(FILE* file, int size, char* final_hash) {
 
 	for (int i = 0; i < iterations; i++) {
 		// Making sure that the expected number of bytes are read
-		if ((nbytes = fread(buf, 1, SHA256_BFLEN, file) == SHA256_BFLEN)) {
-			sha256_update(&cdata, &buf, SHA256_BFLEN);
-		} else {
-			// if the file falls short we will terminate the loop early
-			sha256_update(&cdata, buf, nbytes);
+		nbytes = fread(buf, 1, SHA256_BFLEN, file);
+		sha256_update(&cdata, buf, nbytes);
+
+		if (nbytes != SHA256_BFLEN) {
 			complete_file = 0;
 			break;
 		}

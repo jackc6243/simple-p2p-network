@@ -37,31 +37,50 @@ If format is expected, will return 1 (The address can be null.)
 The is_string is a boolean that decide how we will interpret the type
 of the address and l is the length of the string if string is expected
 */
-int parse_info(char* buffer, FILE* file, char* name, char delim, void* address, int is_string, int l) {
+int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address, int is_string, int l) {
     char* tok;
+    // printf("doing %s\n", name);
     if (fgets(buffer, MAX_LINE_LEN, file)) {
-        tok = strtok(buffer, &delim);
+        tok = strtok(buffer, delim);
+        // printf("tok1: %s\n", tok);
         // making sure the format is correct
         if (strcmp(tok, name)) {
             return FALSE;
         }
+        tok = strtok(NULL, delim);
+        // when no data is expected
+        if (address == NULL) {
+            if (tok == NULL) {
+                return TRUE;
+            } else {
+                // When there is no expected data but data has been received
+                // puts("failed here");
+                return FALSE;
+            }
+        }
+        // printf("tok2: %s,\n", tok);
 
-        if (address == NULL && tok != NULL) {
-            // When there is no expected data but data has been received
-            return FALSE;
-        } else if (is_string) {
+        if (is_string) {
+
+            // we don't need to parse any string
+            if (l <= 0) {
+                return TRUE;
+            }
+
             // When data is expected to be string
-            tok = (char*)strtok(NULL, "\n");
-            char* data = (char*)malloc(sizeof(l));
+            char* data = (char*)malloc(sizeof(char) * (l + 1));
             memcpy(data, tok, l);
-            *((char**)address) = data;
+            data[l] = '\0'; // null terminate the string
+            *address = data;
+            // *((char**)address) = data;
         } else {
             // when data is expected to be int
-            int num;
+            int num = 0;
             if (sscanf(tok, "%d", &num) != 1) {
                 return FALSE;
             }
-            *((int*)address) = num;
+            **((int**)address) = num;
+            // printf("num_now: %d,\n", **((int**)address));
         }
     } else { return FALSE; }
 
@@ -95,6 +114,14 @@ int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, 
     return TRUE;
 }
 
+// This function is for debugging only
+void print_hashes_fromarray(struct merkle_tree_node** arr, int l) {
+    for (int i = 0; i < l; i++) {
+        printf("%d: %.64s\n", i, arr[i]->expected_hash);
+    }
+
+}
+
 /**
  * Loads the package for when a valid path is given
  */
@@ -106,7 +133,6 @@ struct bpkg_obj* bpkg_load(const char* path) {
         printf("Path invalid\n");
         return NULL;
     }
-
     struct bpkg_obj* obj = (struct bpkg_obj*)malloc(sizeof(struct bpkg_obj));
 
     FILE* file = fopen(path, "r");
@@ -114,46 +140,58 @@ struct bpkg_obj* bpkg_load(const char* path) {
 
     // Parsing infos
     int nhash, size;
-    if (!parse_info(buffer, file, "ident", ':', (void*)&(obj->ident), TRUE, MAX_IDENT) ||
-        !parse_info(buffer, file, "filename", ':', (void*)&(obj->filename), TRUE, MAX_FILENAME) ||
-        !parse_info(buffer, file, "size", ':', (void*)&size, FALSE, 0) ||
-        !parse_info(buffer, file, "nhash", ':', (void*)&nhash, FALSE, 0) ||
-        !parse_info(buffer, file, "hashes", ':', NULL, TRUE, 0)) {
-        free(obj);
+    int* nhash_ptr = &nhash; int* size_ptr = &size;
+    if (!parse_info(buffer, file, "ident", ":\n", (void**)&(obj->ident), TRUE, MAX_IDENT) ||
+        !parse_info(buffer, file, "filename", ":\n", (void**)&(obj->filename), TRUE, MAX_FILENAME) ||
+        !parse_info(buffer, file, "size", ":\n", (void**)&size_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "nhashes", ":\n", (void**)&nhash_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "hashes", ":\n", NULL, TRUE, 0)) {
+        bpkg_obj_destroy(obj);
         return NULL;
     }
 
-    // Checking nhash is valid, it must be in the form 2^(h-1) - 1
+    // Checking nhash is valid, it must be in the form 2^(d-1) - 1
     float temp = log2(nhash + 1);
     if (ceil(temp) != floor(temp)) {
         // nhash invalid
-        free(obj);
+        bpkg_obj_destroy(obj);
         return NULL;
     }
-    int height = (int)temp + 1;
+    int depth = (int)temp + 1;
+
+    // updating size and nhash
     obj->nhash = nhash;
+    obj->size = size;
 
     // Parsing Hashes
-    struct merkle_tree_node** all_nodes = (struct merkle_tree_node**)malloc(sizeof(struct merkle_tree_node*) * nhash);
+    struct merkle_tree_node** all_nodes = (struct merkle_tree_node**)
+        malloc(sizeof(struct merkle_tree_node*) * ((int)pow(2, depth) - 1));
+    if (all_nodes == NULL) {
+        // malloc failed
+        fprintf(stderr, "Malloc failed to create space for all_nodes");
+        return NULL;
+    }
+
     if (!parse_hashes(buffer, file, all_nodes, 0, nhash, FALSE)) {
         free_array(all_nodes, nhash);
-        free(obj);
+        bpkg_obj_destroy(obj);
         return NULL;
     }
 
-    // Parsing nchunk
+    // Parsing nchunk and chunk
     int nchunk;
-    if (!parse_info(buffer, file, "nchunk", ':', &nchunk, FALSE, 0) ||
-        !parse_info(buffer, file, "chunks", ':', NULL, TRUE, 0)) {
-        free(obj);
+    int* nchunk_ptr = &nchunk;
+    if (!parse_info(buffer, file, "nchunks", ":\n", (void**)&nchunk_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "chunks", ":\n", NULL, TRUE, 0)) {
+        bpkg_obj_destroy(obj);
         return NULL;
     }
 
-    // Checking nchunk is valid, it must be in the form 2^(h-1) and it must be the same h as nhash
+    // Checking nchunk is valid, it must be in the form 2^(d-1) and it must be the same h as nhash
     temp = log2(nchunk);
-    if (ceil(temp) != floor(temp) || (int)temp != height - 1) {
+    if (ceil(temp) != floor(temp) || (int)temp != depth - 1) {
         // nchunk invalid
-        free(obj);
+        bpkg_obj_destroy(obj);
         return NULL;
     }
     obj->nchunk = nchunk;
@@ -162,18 +200,43 @@ struct bpkg_obj* bpkg_load(const char* path) {
     if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunk, TRUE)) {
         // if fail to parse all required rows, free memory
         free_array(all_nodes, nhash + nchunk);
-        free(obj);
+        bpkg_obj_destroy(obj);
         return NULL;
     }
 
-    obj->tree = level_order_create_tree(all_nodes, height); // create the merkle tree
+    // print for debug
+    // print_hashes_fromarray(all_nodes, obj->nhash + obj->nchunk);
+
+    obj->tree = level_order_create_tree(all_nodes, depth); // create the merkle tree
+
+    // print for debug
+    // printf("ident: %.4s, filename: %s, size: %d, nhash: %d, nchunk: %d,\n", obj->ident, obj->filename, obj->size, obj->nhash, obj->nchunk);
+    // printf("depth: %d, length: %d, last_i: %d\n", depth, (int)(pow(2, depth) - 1), obj->nhash + obj->nchunk);
 
     return obj;
 }
 
 struct bpkg_query* initiate_query(int size) {
     struct bpkg_query* query = (struct bpkg_query*)malloc(sizeof(struct bpkg_query));
+
+    if (query == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for query.\n");
+        return NULL;  // malloc failed
+    }
+
     query->hashes = (char**)malloc(sizeof(char*) * size);
+    if (query->hashes == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for query hash.\n");
+        free(query);  // free the previously allocated memory
+        return NULL;  // malloc failed
+    }
+
+    // initiating string for each hash
+    for (int i = 0; i < size; i++) {
+        query->hashes[i] = (char*)malloc(65 * sizeof(char));
+        query->hashes[i][64] = '\0';
+    }
+
     query->len = size;
 
     return query;
@@ -219,9 +282,10 @@ struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
  */
 struct bpkg_query* bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(bpkg->nchunk + bpkg->nhash);
+
     for (int i = 0; i < bpkg->nchunk + bpkg->nhash; i++) {
         // looping through all hashes in bpkg object.
-        query->hashes[i] = bpkg->all_nodes[i]->computed_hash;
+        memcpy(query->hashes[i], bpkg->tree->all_nodes[i]->expected_hash, 64);
     }
 
     return query;
@@ -242,11 +306,11 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     char* hash) {
     struct bpkg_query* query;
 
-    int height = bpkg->tree->height;
-    struct merkle_tree_node* node = find_hash(bpkg->tree->root, hash, 1, &height);
+    int depth = bpkg->tree->max_depth;
+    struct merkle_tree_node* node = find_hash(bpkg->tree->root, hash, 1, &depth);
     if (node != NULL) {
         // found the node with the same hash string
-        query = initiate_query((int)pow(2, height + 1) - 1);
+        query = initiate_query((int)pow(2, depth + 1) - 1);
         get_chunk_from_hash(node, query->hashes, 0);
     } else {
         query = initiate_query(0);
@@ -331,14 +395,18 @@ void bpkg_query_destroy(struct bpkg_query* qry) {
  * make sure it has been completely deallocated
  */
 void bpkg_obj_destroy(struct bpkg_obj* obj) {
-    free(obj->ident);
-    free(obj->filename);
-    free(obj->all_nodes);
+    if (obj->ident) {
+        free(obj->ident);
+    }
+    if (obj->filename) {
+        free(obj->filename);
+    }
     destroy_tree(obj->tree, TRUE);
     obj->ident = NULL;
     obj->filename = NULL;
     obj->tree = NULL;
     obj->size = 0;
+    free(obj);
 }
 
 

@@ -68,6 +68,9 @@ int main(int argc, char** argv) {
 			exit(1);
 		}
 
+		// debug
+		// printf("ident: %.4s, filename: %s, size: %d, nhash: %d,nchunk: %d\n", obj->ident, obj->filename, obj->size, obj->nhash, obj->nchunk);
+
 		if (argselect == 1) {
 			qry = bpkg_get_all_hashes(obj);
 			bpkg_print_hashes(qry);

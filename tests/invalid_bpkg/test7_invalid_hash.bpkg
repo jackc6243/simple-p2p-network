@@ -1,0 +1,10 @@
+ident:FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321
+filename:invalid_hash_length.bpkg
+size:8192
+nhashes:1
+hashes:
+    abcd1234
+nchunks:2
+chunks:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,0,4096
+    1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd,4096,4096

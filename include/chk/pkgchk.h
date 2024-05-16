@@ -24,7 +24,6 @@ struct bpkg_obj {
 	uint32_t nhash;
 	uint32_t nchunk;
 	struct merkle_tree* tree;
-	struct merkle_tree_node** all_nodes;
 };
 
 

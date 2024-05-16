@@ -1,0 +1,11 @@
+ident:7E57D0046C50D3C0E697A785A6C49F4F6D1D25FF5BDED953
+filename:data.bin
+size:4096
+nhashes:2
+hashes:
+    a785a6c49f4f6d1d25ff5bde
+    d9537e57d0046c50d3c0e697
+nchunks:2
+chunks:
+    a785a6c49f4f6d1d25ff5bde,0,4096
+    d9537e57d0046c50d3c0e697,4096,4096

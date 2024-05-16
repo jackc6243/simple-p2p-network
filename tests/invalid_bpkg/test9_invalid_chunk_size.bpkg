@@ -1,0 +1,10 @@
+ident:ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEF
+filename:incorrect_chunk_size.bpkg
+size:8192
+nhashes:1
+hashes:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234
+nchunks:2
+chunks:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,0,5000
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,0,5000

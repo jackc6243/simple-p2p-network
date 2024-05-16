@@ -1,0 +1,10 @@
+ident:0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA
+filename:invalid_chunk_format.bpkg
+size:8192
+nhashes:1
+hashes:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234
+nchunks:2
+chunks:
+    abcd1234,0,4096
+    abcd1234,4096,4096

@@ -1,0 +1,11 @@
+ident:1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF
+filename:invalid_nchunks_value.bpkg
+size:12288
+nhashes:1
+hashes:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234
+nchunks:3
+chunks:
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,0,4096
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,4096,4096
+    abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234,8192,4096

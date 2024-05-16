@@ -9,25 +9,42 @@
 // Creating tree and intialising default values
 struct merkle_tree* create_tree() {
     struct merkle_tree* tree = (struct merkle_tree*)malloc(sizeof(struct merkle_tree));
+    if (tree == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for tree.\n");
+        return NULL;
+    }
+
     tree->root = NULL;
+    tree->all_nodes = NULL;
     tree->n_nodes = 0;
-    tree->height = 0;
+    tree->max_depth = 0;
     return tree;
 }
 
 // Creating tree node and intialising default values
 struct merkle_tree_node* create_tree_node() {
     struct merkle_tree_node* node = (struct merkle_tree_node*)malloc(sizeof(struct merkle_tree_node));
+    if (node == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for tree node.\n");
+        return NULL;
+    }
+
     node->key = NULL;
     node->value = NULL;
     node->left = NULL;
     node->right = NULL;
     node->is_leaf = FALSE;
+    node->computed_hash[64] = '\0';
+    node->expected_hash[64] = '\0';
     return node;
 }
 
 // free tree node
 void destroy_tree_node(struct merkle_tree_node* node, int recursive) {
+    if (node == NULL) {
+        return;
+    }
+
     if (recursive) {
         destroy_tree_node(node->left, recursive);
         destroy_tree_node(node->right, recursive);
@@ -38,34 +55,41 @@ void destroy_tree_node(struct merkle_tree_node* node, int recursive) {
 // free tree
 void destroy_tree(struct merkle_tree* tree, int recursive) {
     destroy_tree_node(tree->root, recursive);
+    free(tree->all_nodes);
     free(tree);
 }
 
 // create merkle tree from level order traversal
-struct merkle_tree* level_order_create_tree(struct merkle_tree_node* arr[], int h) {
+struct merkle_tree* level_order_create_tree(struct merkle_tree_node* arr[], int d) {
     // creating tree
     struct merkle_tree* tree = create_tree();
     tree->root = arr[0];
-    tree->height = h;
+    tree->max_depth = d;
     tree->all_nodes = arr;
     int low, high, next_low, next_high;
     low = 0;
     high = 1;
 
+    // debug stuff
+    // printf("depth: %d\n", d);
+
     // looping through all the levels in the array given, then connect children appropriately
-    for (int level = 0; level < h - 1; level++) {
+    for (int level = 0; level < d - 1; level++) {
         // low and high are the indices of the first and last node + 1 in the current level
         // next_low and next_high are the indices of the first and last node + 1 in the next level
         next_low = high;
-        next_high += pow(2, level + 1);
-        // j is the indiex of the current node in the current level
-        int j = low;
+        next_high = next_low + (int)pow(2, level + 1);
 
-        for (int i = next_low; i < next_high; i += 2) {
+        // debug print statement
+        // printf("low: %d, high: %d, next_low: %d, next_high: %d\n", low, high, next_low, next_high);
+
+        // prev is the index of the current node in the current level
             // here we loop through all possible nodes in our current level
-            arr[j]->left = arr[i];
-            arr[j]->right = arr[i + 1];
-            j++; // we must increment the current node as well
+        int next = next_low;
+        for (int prev = low; prev < high; prev++) {
+            arr[prev]->left = arr[next];
+            arr[prev]->right = arr[next + 1];
+            next += 2; // we must increment the next node by 2
         }
         low = next_low;
         high = next_high;

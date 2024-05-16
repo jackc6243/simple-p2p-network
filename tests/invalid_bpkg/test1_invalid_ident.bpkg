@@ -1,0 +1,9 @@
+ident:1A2B3Ch
+filename:example.txt
+size:4096
+nhashes:1
+hashes:
+  d41d8cd98f00b204e9800998ecf8427e
+nchunks:1
+chunks:
+  d41d8cd98f00b204e9800998ecf8427e,0,4096
