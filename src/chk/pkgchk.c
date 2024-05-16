@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include "../../include/tree/merkletree.h"
 #include "../../include/chk/pkgchk.h"
+#include "../../include/crypt/sha256.h"
 
 #define MAX_LINE_LEN 2048
 #define MAX_IDENT 1024
@@ -242,11 +243,11 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     struct bpkg_query* query;
 
     int height = bpkg->tree->height;
-    struct merkle_tree* node = find_hash(bpkg->tree->root, hash, 1, &height);
+    struct merkle_tree_node* node = find_hash(bpkg->tree->root, hash, 1, &height);
     if (node != NULL) {
         // found the node with the same hash string
         query = initiate_query((int)pow(2, height + 1) - 1);
-        store_hash(node, query->hashes, 0);
+        get_chunk_from_hash(node, query->hashes, 0);
     } else {
         query = initiate_query(0);
     }
@@ -269,6 +270,14 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
             // File incomplete
             break;
         }
+    }
+
+    // updating length in case file was incomplete
+    query->len = i + 1;
+
+    // remove unnecessary length
+    if (query->len < bpkg->nhash) {
+        query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
     }
 
     return query;
@@ -294,7 +303,7 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query((bpkg->nchunk / 2) + 1);
 
     int index = 0;
-    store_min_hash(bpkg->tree->root, query->hashes, &index);
+    get_min_hashes(bpkg->tree->root, query->hashes, &index);
 
     // index is now the last index
     query->len = index + 1;

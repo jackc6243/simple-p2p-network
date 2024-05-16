@@ -29,7 +29,7 @@ void sha256_finalize(struct sha256_compute_data* data);
 void sha256_output_hex(struct sha256_compute_data* data,
 	char hexbuf[SHA256_CHUNK_SZ]);
 
-void sha256_string_hash(const void* data, size_t size, uint8_t* final_hash);
+void sha256_string_hash(void* data, size_t size, char* final_hash);
 
 int sha256_file_hash(FILE* file, int size, char* final_hash);
 

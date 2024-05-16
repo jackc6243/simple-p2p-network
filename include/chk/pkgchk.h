@@ -2,6 +2,7 @@
 #define PKGCHK_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * Query object, allows you to assign

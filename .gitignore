@@ -1,3 +1,8 @@
 .git
-pkgchk.o
+*.o
 btide
+client
+server
+config
+package
+pkgchecker

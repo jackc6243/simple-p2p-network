@@ -1,5 +1,7 @@
 #include "../../include/tree/merkletree.h"
 #include "../../include/crypt/sha256.h"
+#include <math.h>
+#include <string.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -96,34 +98,34 @@ struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, in
     return a;
 }
 
-void store_min_hash(struct merkle_tree_node* root, struct merkle_tree_node** arr, int* index) {
+void get_min_hashes(struct merkle_tree_node* root, char** arr, int* index) {
     if (root == NULL) {
         return;
     }
 
     // if root node is complete
     if (strcmp(root->expected_hash, root->computed_hash) == 0) {
-        arr[*index] = root;
+        arr[*index] = root->expected_hash;
         *index += 1;
         return;
     }
 
     // If root node not complete
-    store_min_hash(root->left, arr, index);
-    store_min_hash(root->right, arr, index);
+    get_min_hashes(root->left, arr, index);
+    get_min_hashes(root->right, arr, index);
 }
 
 /*
-Stores all hashes in subtree of root into array arr
+Stores all chunks under a hash into given array in subtree of root into array arr
 */
-int store_hash(struct merkle_tree_node* root, struct merkle_tree_node** arr, int i) {
-    if (root == NULL) {
+int get_chunk_from_hash(struct merkle_tree_node* root, char** arr, int i) {
+    // base case where we reached the chunk
+    if (root->left == NULL) {
+        arr[i] = root->expected_hash;
         return i;
     }
-
-    arr[i] = root;
-    i = store_hash(root->left, arr, i + 1);
-    i = store_hash(root->right, arr, i);
+    i = get_chunk_from_hash(root->left, arr, i);
+    i = get_chunk_from_hash(root->right, arr, i + 1);
     return i;
 }
 
@@ -144,5 +146,5 @@ void compute_all_hashes(struct merkle_tree_node* root) {
     memcpy(new_hash + SHA256_CHUNK_SZ, root->right->computed_hash, SHA256_CHUNK_SZ);
 
     // Hash the the 128 size string together and store it in root->computed_hash
-    sha256_string_hash((void*)new_hash, (size_t)SHA256_CHUNK_SZ * 2, (uint8_t*)root->computed_hash);
+    sha256_string_hash((void*)new_hash, (size_t)SHA256_CHUNK_SZ * 2, root->computed_hash);
 }

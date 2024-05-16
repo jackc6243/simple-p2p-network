@@ -25,5 +25,9 @@ struct merkle_tree* create_tree();
 void destroy_tree_node(struct merkle_tree_node* node, int recursive);
 void destroy_tree(struct merkle_tree* tree, int recursive);
 struct merkle_tree* level_order_create_tree(struct merkle_tree_node* arr[], int h);
+struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, int is_expected, int* height);
+void get_min_hashes(struct merkle_tree_node* root, char** arr, int* index);
+int get_chunk_from_hash(struct merkle_tree_node* root, char** arr, int i);
+void compute_all_hashes(struct merkle_tree_node* root);
 
 #endif

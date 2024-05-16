@@ -1,6 +1,7 @@
 #include <crypt/sha256.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define SHA256K (64)
 #define SHA256_BFLEN (1024)
@@ -221,8 +222,8 @@ void sha256_output_hex(struct sha256_compute_data* data,
 }
 
 
-// A simple wrap function for hashing a string of size less than 1024
-void sha256_string_hash(const void* data, size_t size, uint8_t* final_hash) {
+//A simple wrap function for hashing a string of size less than 1024
+void sha256_string_hash(void* data, size_t size, char* final_hash) {
 	struct sha256_compute_data cdata = { 0 };
 	sha256_compute_data_init(&cdata);
 	sha256_update(&cdata, data, size);
@@ -236,14 +237,14 @@ int sha256_file_hash(FILE* file, int size, char* final_hash) {
 	int complete_file = 1;
 	struct sha256_compute_data cdata = { 0 };
 	int iterations = size / SHA256_BFLEN;
-	char buf[SHA256_BFLEN] = (char*)malloc(sizeof(char) * SHA256_BFLEN);
+	char* buf = (char*)malloc(sizeof(char) * SHA256_BFLEN);
 	size_t nbytes = 0;
 
 	sha256_compute_data_init(&cdata);
 
 	for (int i = 0; i < iterations; i++) {
 		// Making sure that the expected number of bytes are read
-		if (nbytes = fread(buf, 1, SHA256_BFLEN, file) == SHA256_BFLEN) {
+		if ((nbytes = fread(buf, 1, SHA256_BFLEN, file) == SHA256_BFLEN)) {
 			sha256_update(&cdata, &buf, SHA256_BFLEN);
 		} else {
 			// if the file falls short we will terminate the loop early
