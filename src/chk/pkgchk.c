@@ -15,7 +15,6 @@
 #define MAX_IDENT 1024
 #define MAX_FILENAME 256
 #define HASH_SIZE 64
-#define CHUNK_SIZE 4096
 
 #define TRUE 1
 #define FALSE 0
@@ -103,7 +102,25 @@ int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, 
             // For each hash, create a tree node
             all_nodes[i] = create_tree_node();
             if (isChunk) {
+                // need to add offset and chunk size
                 all_nodes[i]->is_leaf = TRUE;
+                char* tok = strtok(buffer, ",");
+                tok = strtok(NULL, ",");
+                int temp;
+                // saving offset
+                if (sscanf(tok, "%d", &temp) == 1) {
+                    all_nodes[i]->offset = temp;
+                } else {
+                    return FALSE;
+                }
+
+                tok = strtok(NULL, ",");
+                // saving chunk size
+                if (sscanf(tok, "%d", &temp) == 1) {
+                    all_nodes[i]->chunk_size = temp;
+                } else {
+                    return FALSE;
+                }
             }
             memcpy(all_nodes[i]->expected_hash, buffer + 1, HASH_SIZE);
         } else {
@@ -277,7 +294,7 @@ struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
         // file doesn't exist, will creating file instead
         file = fopen(bpkg->filename, "w");
         // Extending file size
-        ftruncate(fileno(file), (bpkg->nchunk) * CHUNK_SIZE * 2 - 1);
+        ftruncate(fileno(file), bpkg->size);
         char str[] = "File Created";
         memcpy(query->hashes[0], str, sizeof(str));
     }
@@ -347,7 +364,7 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
 
     int i;
     for (i = 0; i < bpkg->nchunk; i++) {
-        if (!sha256_file_hash(file, CHUNK_SIZE, query->hashes[i])) {
+        if (!sha256_file_hash(file, (int)(bpkg->size / bpkg->nchunk), query->hashes[i])) {
             // File incomplete
             i++;
             break;

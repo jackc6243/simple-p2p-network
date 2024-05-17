@@ -29,8 +29,8 @@ struct merkle_tree_node* create_tree_node() {
         return NULL;
     }
 
-    node->key = NULL;
-    node->value = NULL;
+    node->offset = 0;
+    node->chunk_size = 0;
     node->left = NULL;
     node->right = NULL;
     node->is_leaf = FALSE;

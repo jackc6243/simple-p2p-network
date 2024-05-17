@@ -5,8 +5,8 @@
 #include <stddef.h>
 
 struct merkle_tree_node {
-    void* key;
-    void* value;
+    int offset;
+    int chunk_size;
     struct merkle_tree_node* left;
     struct merkle_tree_node* right;
     int is_leaf;

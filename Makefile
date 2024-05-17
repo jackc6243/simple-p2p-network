@@ -22,10 +22,7 @@ pkgchk.o: src/chk/pkgchk.c include/chk/pkgchk.h
 pkgmain.o: src/pkgmain.c include/chk/pkgchk.h include/tree/merkletree.h include/crypt/sha256.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-# pkgmain: pkgmain.o $(OBJS)
-# 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
-
-pkgmain: get_testcases.c
+pkgmain: pkgmain.o $(OBJS)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 debug: CFLAGS += $(DEBUG)
