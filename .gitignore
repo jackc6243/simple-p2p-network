@@ -8,3 +8,4 @@ package
 pkgchecker
 pkgmain
 bin
+output.txt

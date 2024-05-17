@@ -99,25 +99,27 @@ struct merkle_tree* level_order_create_tree(struct merkle_tree_node* arr[], int 
 }
 
 /*
-Returns the node with the hash given to us. Also saves the height of the hash to the address given by height.
-
+Returns the node with the hash given to us. Also saves the depth of the hash to the address given by height.
 */
-struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, int is_expected, int* height) {
-    if (root == NULL) {
-        return NULL;
-    }
+struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, int is_expected, int depth, int* depth_add) {
+    // printf("hash at: %.5s at subtree_depth: %d,\n", root->expected_hash, depth);
 
     // Here we found the hash given
-    if ((is_expected && strcmp(root->expected_hash, hash) == 0) ||
-        (!is_expected && strcmp(root->computed_hash, hash) == 0)) {
+    if ((is_expected && strncmp(root->expected_hash, hash, 64) == 0) ||
+        (!is_expected && strncmp(root->computed_hash, hash, 64) == 0)) {
+        *depth_add = depth;
         return root;
     }
 
-    // when we go down we have decrease height
-    *height -= 1;
-    struct merkle_tree_node* a = find_hash(root->left, hash, is_expected, height);
+    // did not find the hash
+    if (root->is_leaf) {
+        return NULL;
+    }
+
+    // when we go down we have decrease the subtree_depth
+    struct merkle_tree_node* a = find_hash(root->left, hash, is_expected, depth - 1, depth_add);
     if (a == NULL) {
-        a = find_hash(root->right, hash, is_expected, height);
+        a = find_hash(root->right, hash, is_expected, depth - 1, depth_add);
     }
     return a;
 }
@@ -145,7 +147,7 @@ Stores all chunks under a hash into given array in subtree of root into array ar
 int get_chunk_from_hash(struct merkle_tree_node* root, char** arr, int i) {
     // base case where we reached the chunk
     if (root->left == NULL) {
-        arr[i] = root->expected_hash;
+        memcpy(arr[i], root->expected_hash, 64);
         return i;
     }
     i = get_chunk_from_hash(root->left, arr, i);

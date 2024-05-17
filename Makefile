@@ -49,4 +49,4 @@ p2tests:
 	bash p2test.sh
 
 clean:
-	rm -f *.o pkgchecker btide
+	rm -f *.o pkgmain btide

@@ -306,11 +306,12 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     char* hash) {
     struct bpkg_query* query;
 
-    int depth = bpkg->tree->max_depth;
-    struct merkle_tree_node* node = find_hash(bpkg->tree->root, hash, 1, &depth);
+    int depth;
+    struct merkle_tree_node* node = find_hash(bpkg->tree->root, hash, 1, bpkg->tree->max_depth, &depth);
+    // printf("size: %d\n", (int)pow(2, depth - 1));
     if (node != NULL) {
         // found the node with the same hash string
-        query = initiate_query((int)pow(2, depth + 1) - 1);
+        query = initiate_query((int)pow(2, depth - 1));
         get_chunk_from_hash(node, query->hashes, 0);
     } else {
         query = initiate_query(0);
@@ -383,8 +384,10 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
  */
 void bpkg_query_destroy(struct bpkg_query* qry) {
     for (int i = 0; i < qry->len; i++) {
-        free(qry->hashes[i]);
-        qry->hashes[i] = NULL;
+        if (qry->hashes[i] != NULL) {
+            free(qry->hashes[i]);
+            qry->hashes[i] = NULL;
+        }
     }
     free(qry->hashes);
     free(qry);
