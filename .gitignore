@@ -9,3 +9,5 @@ pkgchecker
 pkgmain
 bin
 output.txt
+file*.bpkg
+file*.data

@@ -234,6 +234,17 @@ struct bpkg_query* initiate_query(int size) {
     // initiating string for each hash
     for (int i = 0; i < size; i++) {
         query->hashes[i] = (char*)malloc(65 * sizeof(char));
+        // if we fail to malloc memory
+        if (query->hashes[i] == NULL) {
+            fprintf(stderr, "Error: Failed to allocate memory for query hash string.\n");
+            // Free previously allocated memory
+            for (int j = 0; j < i; j++) {
+                free(query->hashes[j]);
+            }
+            free(query->hashes);
+            free(query);
+            return NULL;  // malloc failed
+        }
         query->hashes[i][64] = '\0';
     }
 
@@ -326,19 +337,25 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
  * 		and the number of hashes that have been retrieved
  */
 struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
-    struct bpkg_query* query = initiate_query(bpkg->nhash);
+    struct bpkg_query* query = initiate_query(bpkg->nchunk);
     FILE* file = fopen(bpkg->filename, "r");
 
+    if (file == NULL) {
+        perror("Failed to open file");
+        return NULL;
+    }
+
     int i;
-    for (i = 0; i < bpkg->nhash; i++) {
+    for (i = 0; i < bpkg->nchunk; i++) {
         if (!sha256_file_hash(file, CHUNK_SIZE, query->hashes[i])) {
             // File incomplete
+            i++;
             break;
         }
     }
 
-    // updating length in case file was incomplete
-    query->len = i + 1;
+    // updating length in case file was incomplete and we did not compute every nchunk
+    query->len = i;
 
     // remove unnecessary length
     if (query->len < bpkg->nhash) {
@@ -348,6 +365,20 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
     return query;
 }
 
+// parse all data chunks and update all hashes in the merkle tree
+void parse_hash_data_chunks(struct bpkg_obj* bpkg) {
+    // parse the bpkg data file
+    struct bpkg_query* all_chunks = bpkg_get_completed_chunks(bpkg);
+    // update the last level of the tree
+    for (int i = bpkg->nhash; i < bpkg->nhash + bpkg->nchunk; i++) {
+        memccpy(bpkg->tree->all_nodes[i]->computed_hash, all_chunks->hashes[i - bpkg->nhash], '\0', 64);
+    }
+    // update the hashes in the tree
+    compute_all_hashes(bpkg->tree->all_nodes[0]);
+
+    // free the all_chunks query since it is no longer needed
+    bpkg_query_destroy(all_chunks);
+}
 
 /**
  * Gets the mininum of hashes to represented the current completion state
@@ -364,16 +395,26 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
  * 		and the number of hashes that have been retrieved
  */
 struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
+    // parse all data chunks and update hash in tree first
+    parse_hash_data_chunks(bpkg);
+
     // initiate query
     struct bpkg_query* query = initiate_query((bpkg->nchunk / 2) + 1);
 
+    // get min hash
     int index = 0;
     get_min_hashes(bpkg->tree->root, query->hashes, &index);
 
-    // index is now the last index
-    query->len = index + 1;
-    // remove unnecessary length
-    query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
+    // index is the last valid index in query->hashes
+    query->len = index;
+    // remove unnecessary length and free appropriate hashes
+    for (int i = query->len; i < (bpkg->nchunk / 2) + 1; i++) {
+        free(query->hashes[i]);
+        query->hashes[i] = NULL;
+    }
+    // printf("query outside 0: %s\n", query->hashes[0]);
+    // free(*query->hashes);
+    // query->hashes = realloc(query->hashes, sizeof(char*) * (int)query->len);
     return query;
 }
 

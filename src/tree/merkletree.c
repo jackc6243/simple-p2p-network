@@ -125,14 +125,14 @@ struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, in
 }
 
 void get_min_hashes(struct merkle_tree_node* root, char** arr, int* index) {
-    if (root == NULL) {
+    // if root node is complete
+    if (strncmp(root->expected_hash, root->computed_hash, 64) == 0) {
+        arr[*index] = root->expected_hash;
+        *index += 1;
         return;
     }
 
-    // if root node is complete
-    if (strcmp(root->expected_hash, root->computed_hash) == 0) {
-        arr[*index] = root->expected_hash;
-        *index += 1;
+    if (root->is_leaf) {
         return;
     }
 

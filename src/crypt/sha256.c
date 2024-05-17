@@ -217,8 +217,11 @@ static void bin_to_hex(const void* data, uint32_t len, char* out) {
 void sha256_output_hex(struct sha256_compute_data* data,
 	char hexbuf[SHA256_CHUNK_SZ]) {
 	uint8_t hash[32] = { 0 };
+	// printf("hi\n");
 	sha256_output(data, hash);
+	// printf("hi2\n");
 	bin_to_hex(hash, 32, hexbuf);
+	// printf("hi3\n");
 }
 
 
@@ -241,6 +244,7 @@ int sha256_file_hash(FILE* file, int size, char* final_hash) {
 	size_t nbytes = 0;
 
 	sha256_compute_data_init(&cdata);
+	// printf("went wrong here1\n");
 
 	for (int i = 0; i < iterations; i++) {
 		// Making sure that the expected number of bytes are read
@@ -253,7 +257,9 @@ int sha256_file_hash(FILE* file, int size, char* final_hash) {
 		}
 	}
 
+	// printf("went wrong here2\n");
 	sha256_finalize(&cdata);
+	// printf("went wrong here3\n");
 	sha256_output_hex(&cdata, final_hash);
 	free(buf);
 
