@@ -11,3 +11,6 @@ bin
 output.txt
 file*.bpkg
 file*.data
+pkgmake
+pktval
+sha256chk

@@ -424,14 +424,17 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
  * the relevant queries above.
  */
 void bpkg_query_destroy(struct bpkg_query* qry) {
-    for (int i = 0; i < qry->len; i++) {
-        if (qry->hashes[i] != NULL) {
-            free(qry->hashes[i]);
-            qry->hashes[i] = NULL;
+    if (qry != NULL) {
+        if (qry->hashes != NULL) {
+            for (int i = 0; i < qry->len; i++) {
+                if (qry->hashes[i] != NULL) {
+                    free(qry->hashes[i]);
+                }
+            }
+            free(qry->hashes);
         }
+        free(qry);
     }
-    free(qry->hashes);
-    free(qry);
 }
 
 /**
