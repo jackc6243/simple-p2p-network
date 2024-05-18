@@ -281,21 +281,19 @@ struct bpkg_query* initiate_query(int size) {
  */
 struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(1);
-    // Initiating message
-    query->hashes[0] = (char*)calloc(20, sizeof(char));
     FILE* file;
+    file = fopen(bpkg->filename, "r");
 
-    if (access(bpkg->filename, F_OK) == 0) {
+    if (file != NULL) {
         // file exists
-        file = fopen(bpkg->filename, "r");
-        char str[] = "File Exists";
+        char str[] = "File Exists\0";
         memcpy(query->hashes[0], str, sizeof(str));
     } else {
         // file doesn't exist, will creating file instead
         file = fopen(bpkg->filename, "w");
         // Extending file size
         ftruncate(fileno(file), bpkg->size);
-        char str[] = "File Created";
+        char str[] = "File Created\0";
         memcpy(query->hashes[0], str, sizeof(str));
     }
     fclose(file);
