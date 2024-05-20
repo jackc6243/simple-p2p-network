@@ -11,11 +11,6 @@
 #include "../../include/chk/pkgchk.h"
 #include "../../include/crypt/sha256.h"
 
-#define MAX_LINE_LEN 2048
-#define MAX_IDENT 1024
-#define MAX_FILENAME 256
-#define HASH_SIZE 64
-
 #define TRUE 1
 #define FALSE 0
 
@@ -38,15 +33,18 @@ of the address and l is the length of the string if string is expected
 */
 int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address, int is_string, int l) {
     char* tok;
-    // printf("doing %s\n", name);
+    char* context;
+    printf("doing %s\n", name);
     if (fgets(buffer, MAX_LINE_LEN, file)) {
-        tok = strtok(buffer, delim);
-        // printf("tok1: %s\n", tok);
+        puts("hi");
+        printf("%s\n", buffer);
+        tok = strtok_r(buffer, delim, &context);
+        printf("tok1: %s\n", tok);
         // making sure the format is correct
         if (strcmp(tok, name)) {
             return FALSE;
         }
-        tok = strtok(NULL, delim);
+        tok = strtok_r(NULL, delim, &context);
         // when no data is expected
         if (address == NULL) {
             if (tok == NULL) {
@@ -102,10 +100,11 @@ int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, 
             // For each hash, create a tree node
             all_nodes[i] = create_tree_node();
             if (isChunk) {
+                char* context;
                 // need to add offset and chunk size
                 all_nodes[i]->is_leaf = TRUE;
-                char* tok = strtok(buffer, ",");
-                tok = strtok(NULL, ",");
+                char* tok = strtok_r(buffer, ",", &context);
+                tok = strtok_r(NULL, ",", &context);
                 int temp;
                 // saving offset
                 if (sscanf(tok, "%d", &temp) == 1) {
@@ -114,7 +113,7 @@ int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, 
                     return FALSE;
                 }
 
-                tok = strtok(NULL, ",");
+                tok = strtok_r(NULL, ",", &context);
                 // saving chunk size
                 if (sscanf(tok, "%d", &temp) == 1) {
                     all_nodes[i]->chunk_size = temp;

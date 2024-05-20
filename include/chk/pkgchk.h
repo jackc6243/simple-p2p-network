@@ -4,6 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define MAX_LINE_LEN 2048
+#define MAX_IDENT 1024
+#define MAX_FILENAME 256
+#define HASH_SIZE 64
+
 /**
  * Query object, allows you to assign
  * hash strings to it.

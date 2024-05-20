@@ -1,10 +1,7 @@
 .git
 *.o
-btide
-client
-server
-config
-package
+/btide
+!/btide/
 pkgchecker
 pkgmain
 bin
@@ -14,3 +11,5 @@ file*.data
 pkgmake
 pktval
 sha256chk
+test.c
+a.out
