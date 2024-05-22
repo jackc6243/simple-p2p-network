@@ -460,7 +460,9 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     // index is the last valid index in query->hashes
     query->len = index;
     // remove unnecessary length and free appropriate hashes
+    puts("freeing");
     for (int i = query->len; i < (bpkg->nchunk / 2) + 1; i++) {
+        printf("%d,", i);
         free(query->hashes[i]);
         query->hashes[i] = NULL;
     }
@@ -479,6 +481,7 @@ void bpkg_query_destroy(struct bpkg_query* qry) {
     if (qry != NULL) {
         if (qry->hashes != NULL) {
             for (int i = 0; i < qry->len; i++) {
+                // make sure we don't accidently double free
                 if (qry->hashes[i] != NULL) {
                     free(qry->hashes[i]);
                 }

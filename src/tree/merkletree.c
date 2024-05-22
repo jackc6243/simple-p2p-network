@@ -173,4 +173,5 @@ void compute_all_hashes(struct merkle_tree_node* root) {
 
     // Hash the the 128 size string together and store it in root->computed_hash
     sha256_string_hash((void*)new_hash, (size_t)SHA256_CHUNK_SZ * 2, root->computed_hash);
+    free(new_hash);
 }
