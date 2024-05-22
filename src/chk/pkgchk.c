@@ -14,6 +14,42 @@
 #define TRUE 1
 #define FALSE 0
 
+/*
+have to redefine strtok_r myself because doesn't work on my machine for some reason, code exactly from source code: https://codebrowser.dev/glibc/glibc/string/strtok_r.c.html
+*/
+char* strtok_r(char* str, const char* delim, char** saveptr) {
+    char* end;
+
+    if (str == NULL) {
+        str = *saveptr;
+    }
+
+    if (*str == '\0')
+    {
+        *saveptr = str;
+        return NULL;
+    }
+
+    // Skip leading delimiters
+    str += strspn(str, delim);
+    if (*str == '\0') {
+        *saveptr = str;
+        return NULL;
+    }
+
+    // Find the end of the token
+    end = str + strcspn(str, delim);
+    if (*end == '\0') {
+        *saveptr = end;
+        return str;
+    }
+
+    // Terminate the token and make *saveptr point past it
+    *end = '\0';
+    *saveptr = end + 1;
+    return str;
+}
+
 void free_array(struct merkle_tree_node** arr, int l) {
     for (int i = 0; i < l; i++) {
         if (arr[i] != NULL) {
@@ -34,12 +70,11 @@ of the address and l is the length of the string if string is expected
 int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address, int is_string, int l) {
     char* tok;
     char* context;
-    printf("doing %s\n", name);
+    // printf("doing %s\n", name);
     if (fgets(buffer, MAX_LINE_LEN, file)) {
-        puts("hi");
-        printf("%s\n", buffer);
+        // printf("buffer: %s\n", buffer);
         tok = strtok_r(buffer, delim, &context);
-        printf("tok1: %s\n", tok);
+        // printf("tok1: %s\n", tok);
         // making sure the format is correct
         if (strcmp(tok, name)) {
             return FALSE;
@@ -76,6 +111,9 @@ int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address
             if (sscanf(tok, "%d", &num) != 1) {
                 return FALSE;
             }
+            // printf("num is: %d\n", num);
+            // int** x = (int**)address;
+            // printf("x: %d\n", **x);
             **((int**)address) = num;
             // printf("num_now: %d,\n", **((int**)address));
         }

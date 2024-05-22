@@ -31,6 +31,10 @@ struct bpkg_obj {
 	struct merkle_tree* tree;
 };
 
+int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address, int is_string, int l);
+
+// same as the one from c library
+char* strtok_r(char* str, const char* delim, char** saveptr);
 
 /**
  * Loads the package for when a value path is given

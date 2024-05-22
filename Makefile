@@ -4,7 +4,7 @@ DEBUG = -fsanitize=address -g -DDEBUG
 LDFLAGS=-lm -lpthread
 INCLUDE=-Iinclude
 OBJS = pkgchk.o merkletree.o sha256.o
-BTIDE_OBJS = config.o client.o server.o packet.o
+BTIDE_OBJS = config.o peer.o network.o packet.o
 .PHONY: clean
 
 # Required for Part 1 - Make sure it outputs a .o file
@@ -26,8 +26,7 @@ pkgmain: pkgmain.o $(OBJS)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 debug: CFLAGS += $(DEBUG)
-debug: pkgmain
-
+debug: btide
 
 # Required for Part 2 - Make sure it outputs `btide` file
 # in your directory ./
@@ -35,16 +34,16 @@ debug: pkgmain
 config.o: src/btide/config.c include/chk/pkgchk.h  include/net/config.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-client.o: src/btide/client.c include/net/packet.h include/net/client.h
+network.o: src/btide/network.c include/net/packet.h include/net/network.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-server.o: src/btide/server.c include/net/packet.h include/net/server.h
+peer.o: src/btide/peer.c include/net/peer.h include/net/packet.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 packet.o: src/btide/packet.c include/net/packet.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-btide.o: src/btide.c include/chk/pkgchk.h include/net/packet.h include/net/config.h include/net/server.h include/net/client.h
+btide.o: src/btide.c include/chk/pkgchk.h include/net/packet.h include/net/config.h include/net/network.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 btide: $(OBJS) $(BTIDE_OBJS) btide.o

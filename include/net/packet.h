@@ -38,6 +38,8 @@ struct btide_packet {
 };
 
 struct btide_packet* create_packet(int message);
-
+int send_packet(int sock_fd, int msg);
+struct btide_packet* check_receive(int sock_fd, int msg);
+int ping_pong(int sock_fd);
 
 #endif

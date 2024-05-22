@@ -5,14 +5,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../../include/chk/pkgchk.h"
 #include "../../include/net/config.h"
+#include "../../include/chk/pkgchk.h"
+
 
 struct config* parse_config(char* file_path) {
     struct config* args = (struct config*)malloc(sizeof(struct config));
     char buffer[MAX_LINE_LEN];
     FILE* file = fopen(file_path, "r");
-    char delim[] = ":";
+    char delim[] = ":\n\r";
 
     if (file == NULL) {
         return NULL;
@@ -24,12 +25,9 @@ struct config* parse_config(char* file_path) {
     // tok = strtok_r(buffer, delim, &context);
     // printf("tok: %s\n");
 
-    puts("hi");
-
     if (!parse_info(buffer, file, "directory", delim, (void*)&args->directory, 1, MAX_STR_LEN)) {
         args->status = 3;
     }
-    puts("hi2");
     struct stat st = { 0 };
     // Check if the directory exists, if not try creating it
     if (stat(args->directory, &st) == -1 && mkdir(args->directory, 0777) == -1) {
@@ -38,17 +36,18 @@ struct config* parse_config(char* file_path) {
         fprintf(stderr, "Error creating directory: %s\n", strerror(errno));
         return args;
     }
-    puts("hi3");
 
-    if (!parse_info(buffer, file, "max_peers", delim, (void*)&args->max_peers, 0, 0) ||
-        (args->max_peers < 1 || args->max_peers > 2048)) {
+    int temp = 69;
+    int* temp_ptr = &temp;
+
+    if (!parse_info(buffer, file, "max_peers", delim, (void**)&temp_ptr, 0, 0) ||
+        (temp < 1 || temp > 2048)) {
         args->status = 4;
         return args;
     }
-    puts("hi4");
+    args->max_peers = temp;
 
-    int temp;
-    if (!parse_info(buffer, file, "port", delim, (void*)&temp, 0, 0) ||
+    if (!parse_info(buffer, file, "port", delim, (void**)&temp_ptr, 0, 0) ||
         (temp <= 1024 || temp > 65535)) {
         args->status = 5;
         return args;

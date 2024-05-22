@@ -1,6 +1,8 @@
 #ifndef CONFIG_FILE
 #define CONFIG_FILE
 
+#include <stdint.h>
+
 #define MAX_STR_LEN 1024
 
 struct config {

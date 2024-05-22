@@ -14,10 +14,10 @@ int initiate_packages(struct package_list* all_packages) {
 }
 
 // Add a new package to the end of the list
-void add_package(struct package_list* list, struct bpkg_obj* bpkg) {
+void add_package(struct package_list* list, struct bpkg_obj* bpkg, int is_completed) {
     struct package* new_package = (struct package*)malloc(sizeof(struct package));
     new_package->bpkg = bpkg;
-    new_package->is_completed = 0;
+    new_package->is_completed = is_completed;
     new_package->next = NULL;
 
     if (list->head == NULL) {
