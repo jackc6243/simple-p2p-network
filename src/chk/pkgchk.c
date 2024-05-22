@@ -440,7 +440,8 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
         }
     }
 
-    // freeing any potentially uneeded strings in query hashes
+    query->len = idx;
+    // freeing any potentially unused strings in query hashes
     for (;idx < bpkg->nchunk; idx++) {
         free(query->hashes[idx]);
     }
