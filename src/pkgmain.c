@@ -40,7 +40,7 @@ int arg_select(int argc, char** argv, int* asel, char* harg) {
 		// 	exit(1);
 		// }
 		*asel = 5;
-		strncpy(harg, argv[3], SHA256_HEX_LEN);
+		// strncpy(harg, argv[3], SHA256_HEX_LEN);
 	}
 	return *asel;
 }
