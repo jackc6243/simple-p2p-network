@@ -411,6 +411,11 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
 
     // remove unnecessary length
     if (query->len < bpkg->nhash) {
+        // need to free the excess hashes
+        for (int i = query->len; i < bpkg->nhash; i++) {
+            free(query->hashes[i]);
+        }
+
         query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
     }
 
@@ -460,15 +465,16 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     // index is the last valid index in query->hashes
     query->len = index;
     // remove unnecessary length and free appropriate hashes
-    puts("freeing");
+    // puts("freeing");
     for (int i = query->len; i < (bpkg->nchunk / 2) + 1; i++) {
-        printf("%d,", i);
+        // printf("%d,", i);
         free(query->hashes[i]);
         query->hashes[i] = NULL;
     }
     // printf("query outside 0: %s\n", query->hashes[0]);
     // free(*query->hashes);
-    // query->hashes = realloc(query->hashes, sizeof(char*) * (int)query->len);
+    // reallocate because we don't need extra space
+    // query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
     return query;
 }
 
