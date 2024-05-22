@@ -382,13 +382,8 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
     return query;
 }
 
-/**
- * Retrieves all completed chunks of a package object
- * @param bpkg, constructed bpkg object
- * @return query_result, This structure will contain a list of hashes
- * 		and the number of hashes that have been retrieved
- */
-struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
+
+struct bpkg_query* bpkg_all_chunks_from_file(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(bpkg->nchunk);
     FILE* file = fopen(bpkg->filename, "r");
 
@@ -422,14 +417,51 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
     return query;
 }
 
-// parse all data chunks and update all hashes in the merkle tree
-void parse_hash_data_chunks(struct bpkg_obj* bpkg) {
+/**
+ * Retrieves all completed chunks of a package object
+ * @param bpkg, constructed bpkg object
+ * @return query_result, This structure will contain a list of hashes
+ * 		and the number of hashes that have been retrieved
+ */
+struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
     // parse the bpkg data file
-    struct bpkg_query* all_chunks = bpkg_get_completed_chunks(bpkg);
+    struct bpkg_query* all_chunks = bpkg_all_chunks_from_file(bpkg);
     // update the last level of the tree
+    update_computed_chunk_hash(bpkg, all_chunks);
+    bpkg_query_destroy(all_chunks);
+    struct bpkg_query* query = initiate_query(bpkg->nchunk);
+    int idx = 0;
+
+    for (int i = bpkg->nhash; i < bpkg->nhash + bpkg->nchunk; i++) {
+        // we only add to the return query if the hash is correct
+        if (strncmp(bpkg->tree->all_nodes[i]->computed_hash, bpkg->tree->all_nodes[i]->expected_hash, 64) == 0) {
+            memcpy(query->hashes[idx], bpkg->tree->all_nodes[i]->computed_hash, 64);
+            idx++;
+        }
+    }
+
+    // freeing any potentially uneeded strings in query hashes
+    for (;idx < bpkg->nchunk; idx++) {
+        free(query->hashes[idx]);
+    }
+
+    return query;
+}
+
+void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks) {
     for (int i = bpkg->nhash; i < bpkg->nhash + bpkg->nchunk; i++) {
         memccpy(bpkg->tree->all_nodes[i]->computed_hash, all_chunks->hashes[i - bpkg->nhash], '\0', 64);
     }
+}
+
+// parse all data chunks and update all hashes in the merkle tree
+void parse_hash_data_chunks(struct bpkg_obj* bpkg) {
+    // parse the bpkg data file
+    struct bpkg_query* all_chunks = bpkg_all_chunks_from_file(bpkg);
+
+    // update the last level of the tree
+    update_computed_chunk_hash(bpkg, all_chunks);
+
     // update the hashes in the tree
     compute_all_hashes(bpkg->tree->all_nodes[0]);
 
@@ -476,6 +508,7 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
     // reallocate because we don't need extra space
     // query->hashes = realloc(query->hashes, sizeof(char*) * query->len);
     return query;
+
 }
 
 

@@ -109,5 +109,7 @@ void bpkg_query_destroy(struct bpkg_query* qry);
  */
 void bpkg_obj_destroy(struct bpkg_obj* obj);
 
+void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks);
+
 #endif
 

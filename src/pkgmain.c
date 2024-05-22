@@ -84,15 +84,6 @@ int main(int argc, char** argv) {
 
 			qry = bpkg_get_min_completed_hashes(obj);
 			bpkg_print_hashes(qry);
-			// printf("query outside length: %d\n", (int)qry->len);
-			// printf("query outside 0: %s\n", qry->hashes[0]);
-			// printf("query outside 1: %s\n", qry->hashes[1]);
-			// puts("1");
-			// free(qry->hashes[0]);
-			// puts("1");
-			// free(qry->hashes);
-			// puts("1");
-			// free(qry);
 
 			bpkg_query_destroy(qry);
 		} else if (argselect == 4) {
