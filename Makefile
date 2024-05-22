@@ -4,7 +4,7 @@ DEBUG = -fsanitize=address -g -DDEBUG
 LDFLAGS=-lm -lpthread
 INCLUDE=-Iinclude
 OBJS = pkgchk.o merkletree.o sha256.o
-BTIDE_OBJS = config.o peer.o network.o packet.o
+BTIDE_OBJS = config.o peer.o network.o packet.o package.o
 .PHONY: clean
 
 # Required for Part 1 - Make sure it outputs a .o file
@@ -38,6 +38,9 @@ network.o: src/btide/network.c include/net/packet.h include/net/network.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 peer.o: src/btide/peer.c include/net/peer.h include/net/packet.h
+	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
+
+package.o: src/btide/package.c include/net/package.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 packet.o: src/btide/packet.c include/net/packet.h

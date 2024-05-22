@@ -5,14 +5,17 @@
 #include <stdlib.h>
 
 #include "../include/chk/pkgchk.h"
+#include "../include/tree/merkletree.h"
 #include "../include/net/config.h"
 #include "../include/net/network.h"
 #include "../include/net/peer.h"
 #include "../include/net/packet.h"
+#include "../include/net/package.h"
 
 #define MAX_THREADS 2048
 #define MAX_COMMAND 5540
 #define MAX_IP_LENGTH 30
+#define PATH_MAX 200
 
 #define TRUE 1
 #define FALSE 0
@@ -21,6 +24,7 @@ volatile int terminate = 0;
 pthread_t server_thread;
 pthread_mutex_t peer_mutex;
 struct peer_list* peer_list;
+struct package_list* package_list;
 
 // handle exit more gracefully
 void sigint_handler(int signum) {
@@ -69,21 +73,24 @@ int main(int argc, char** argv) {
         exit(config->status);
     }
 
-    printf("direct:%s, max_peers:%d, port:%d\n", config->directory, config->max_peers, config->port);
+    printf("directory:%s, max_peers:%d, port:%d\n", config->directory, config->max_peers, config->port);
 
-    // initating some needed variables and buffers
+    // initating some variables and buffers for repeated use
     char* tok; char* context;
     char delim[] = " \n";
     char ip[MAX_IP_LENGTH] = { 0 };
-    // struct sockaddr_in temp_addr;
-    // int temp;
     struct peer* temp_peer;
-    int port;
+    int port; int temp;
     char input[MAX_COMMAND];
+    char full_path[PATH_MAX] = { 0 };
+    struct bpkg_obj* bpkg;
+    struct bpkg_query* query;
 
-    // setup packages, peer_list and listening server
+    // setup packages, peer_list, configurations and listening server
+    package_list = initiate_packages();
     peer_list = initiate_peers(config->max_peers);
-    create_server(config, peer_list, NULL, &server_thread);
+    struct server_config* server_config = setup_config(config, peer_list, package_list);
+    create_server(server_config, &server_thread);
 
     while (1) {
         // Read input from stdin
@@ -122,7 +129,7 @@ int main(int argc, char** argv) {
 
             printf("trying to connect to peer %s:%d\n", ip, port);
             // attempting to connect to peer
-            if (connect_new_peer(ip, port, peer_list)) {
+            if (connect_new_peer(ip, port, server_config)) {
                 printf("Connection established with peer.\n");
             } else {
                 printf("Unable to connect to request peer\n");
@@ -148,17 +155,73 @@ int main(int argc, char** argv) {
             printf("Disconnected from peer\n");
         } else if (strcmp(input, "ADDPACKAGE") == 0) {
             printf("Adding package...\n");
-            // Add your add package logic here
+            // get file path
+            tok = strtok_r(NULL, delim, &context);
+            if (tok == NULL) {
+                puts("Missing file argument");
+                continue;
+            }
+
+            // joining path together
+            sprintf(full_path, "%s/%s", config->directory, tok);
+            printf("Full path: %s\n", full_path);
+
+            bpkg = bpkg_load(full_path);
+            if (bpkg == NULL) {
+                puts("Unable to parse bpkg file");
+                continue;
+            }
+
+            query = bpkg_file_check(bpkg);
+            if (query == NULL) {
+                puts("Cannot open file");
+                continue;
+            }
+
+            temp = 0; // temp tells us the completion state of this file
+            if (strcmp(query->hashes[0], "File Exists") == 0) {
+                // we should update the merkle tree in the file
+                free(query);
+                query = bpkg_get_min_completed_hashes(bpkg);
+                if (query->len == 1 &&
+                    strncmp(query->hashes[0], bpkg->tree->all_nodes[0]->expected_hash, 64)) {
+                    // file is completed
+                    temp = 1;
+                    bpkg_query_destroy(query);
+                }
+            } else {
+                bpkg_query_destroy(query);
+            }
+            add_package(package_list, bpkg, temp);
+
         } else if (strcmp(input, "REMPACKAGE") == 0) {
-            printf("Removing package...\n");
-            // Add your remove package logic here
+            tok = strtok_r(NULL, delim, &context);
+            if (tok == NULL || strlen(tok) < 20) {
+                puts("Missing identifier argument, please specify whole 1024 character or at least 20 characters.");
+                continue;
+            }
+
+            if (remove_package(package_list, tok) == 0) {
+                // couldn't remove the package
+                puts("Identifier provided does not match managed packages");
+            }
+
         } else if (strcmp(input, "PACKAGES") == 0) {
-            printf("Listing packages...\n");
-            // Add your list packages logic here
+            pthread_mutex_lock(&package_list->plist_lock);
+            if (package_list->length > 0) {
+                print_packages(package_list);
+            } else {
+                puts("No packages managed.");
+            }
+            pthread_mutex_unlock(&package_list->plist_lock);
+
         } else if (strcmp(input, "PEERS") == 0) {
-            printf("Connected to:\n");
-            ping_peers(peer_list);
-            print_peers(peer_list);
+            if (peer_list->length > 0) {
+                printf("Connected to:\n");
+                ping_peers(peer_list);
+                print_peers(peer_list);
+            }
+            puts("Not connected to any peers");
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");
             // Add your fetch logic here

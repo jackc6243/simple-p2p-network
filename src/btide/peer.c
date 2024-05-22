@@ -18,7 +18,8 @@ struct peer_list* initiate_peers(int max_peers) {
     all_peers->max_peers = max_peers;
     // mutex to prevent multiple threads from changing peer list
     if (pthread_mutex_init(&all_peers->peerlist_lock, NULL) != 0) {
-        perror("Can't initate peer mutex");
+        puts("Can't initate peer mutex");
+        free(all_peers);
         return NULL;
     }
     return all_peers;
@@ -31,17 +32,16 @@ struct peer* add_peer(struct peer_list* list, int sock_fd, struct sockaddr_in ad
     new_peer->sock_fd = sock_fd;
     new_peer->peer_list = list;
     new_peer->next = NULL;
-    new_peer->previous = NULL;
+    new_peer->previous = list->tail; // set previous to current tail
 
     pthread_mutex_lock(&(list->peerlist_lock));
     if (list->head == NULL) {
-        list->head = new_peer;
-        list->tail = new_peer;
+        list->head = new_peer; // empty list case, set new_peer as head
     } else {
-        list->tail->next = new_peer;
-        new_peer->previous = list->tail;
-        list->tail = new_peer;
+        list->tail->next = new_peer; // if tail exists, set its next to new_peer
     }
+
+    list->tail = new_peer; // new_peer is always going to be tail
     list->length++;
     pthread_mutex_unlock(&(list->peerlist_lock));
     return new_peer;
@@ -65,36 +65,15 @@ struct peer* get_peer(struct peer_list* list, char* ip, int port) {
     return NULL;
 }
 
-// Remove a peer from the list by first finding it, mutex to prevent race condition
+// Remove a peer from the list by first finding it, then removing it directly
 // the port and ip are both in local form
 int remove_peer(struct peer_list* list, char* ip, int port) {
-    pthread_mutex_lock(&(list->peerlist_lock));
-    struct peer* current = list->head;
-    struct peer* previous = NULL;
-
-    while (current != NULL) {
-        if (strcmp(inet_ntoa(current->address.sin_addr), ip) == 0
-            && current->address.sin_port == ntohs(port)) {
-            if (previous == NULL) {
-                list->head = current->next;
-            } else {
-                previous->next = current->next;
-            }
-
-            if (current == list->tail) {
-                list->tail = previous;
-            }
-
-            free(current);
-            list->length--;
-            pthread_mutex_unlock(&(list->peerlist_lock));
+    struct peer* peer = get_peer(list, ip, port);
+    if (peer != NULL) {
+        if (remove_peer_direct(peer)) {
             return 1;
         }
-
-        previous = current;
-        current = current->next;
     }
-    pthread_mutex_unlock(&(list->peerlist_lock));
     return 0;
 }
 
@@ -106,13 +85,22 @@ int remove_peer_direct(struct peer* peer) {
     // edge case where this peer is the head
     if (list->head == peer) {
         list->head = peer->next;
+        if (list->head != NULL) { // check if list is not empty after removal
+            list->head->previous = NULL;
+        }
     } else {
         peer->previous->next = peer->next;
+        if (peer->next != NULL) { // check if peer is not the last node
+            peer->next->previous = peer->previous;
+        }
     }
 
     // case where peer the tail
     if (peer == list->tail) {
         list->tail = peer->previous;
+        if (list->tail != NULL) { // check if list is not empty after removal
+            list->tail->next = NULL;
+        }
     }
 
     free(peer);

@@ -39,14 +39,14 @@ void set_socket_timeout(int sockfd, int seconds, int microseconds) {
     }
 }
 
-int init_pthread(struct peer_list* peer_list, int peer_socket, struct sockaddr_in address) {
+int init_pthread(struct server_config* server_config, int peer_socket, struct sockaddr_in address) {
     // peer has been succesfully connected, now we add to peer_list
-    struct peer* new_peer = add_peer(peer_list, peer_socket, address);
+    server_config->peer = add_peer(server_config->peer_list, peer_socket, address);
     printf("peer added to peer list, socket fd is %d, IP is : %s, port : %d\n",
         peer_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
     // create a new thread for this peer
-    if (pthread_create(&new_peer->thread_id, NULL, peer_thread, new_peer) != 0) {
+    if (pthread_create(&server_config->peer->thread_id, NULL, peer_thread, (void*)server_config) != 0) {
         perror("pthread_create failed");
         exit(EXIT_FAILURE);
         return FALSE;
@@ -56,7 +56,7 @@ int init_pthread(struct peer_list* peer_list, int peer_socket, struct sockaddr_i
 }
 
 // creates a connection to the given ip and port, returns socket fd. Returns 1 if success, 0 if fail
-int connect_new_peer(char* ip, int port, struct peer_list* peer_list) {
+int connect_new_peer(char* ip, int port, struct server_config* server_config) {
     int sock = 0;
     // Create socket file descriptor
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -94,13 +94,13 @@ int connect_new_peer(char* ip, int port, struct peer_list* peer_list) {
     puts("initating thread now\n");
 
     // connection succesful, now we create a new thread for this peer socket
-    init_pthread(peer_list, sock, peer_address);
+    init_pthread(server_config, sock, peer_address);
 
     return sock;
 }
 
 // initiate connection with the new peer, create a new thread for this peer and also add the peer to peer_list
-int accept_new_peer(int sock, struct sockaddr_in address, struct peer_list* peer_list) {
+int accept_new_peer(int sock, struct sockaddr_in address, struct server_config* server_config) {
     printf("New connection, socket fd is %d, IP is : %s, port : %d\n",
         sock, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
@@ -113,7 +113,7 @@ int accept_new_peer(int sock, struct sockaddr_in address, struct peer_list* peer
 
     printf("protocol is fine\n");
     // connection succesful, now we create a new thread for this peer socket
-    init_pthread(peer_list, sock, address);
+    init_pthread(server_config, sock, address);
 
     return sock;
 }
@@ -131,7 +131,9 @@ void packet_cleanup(void* arg) {
 
 // thread for each peer
 void* peer_thread(void* arg) {
-    struct peer* peer = (struct peer*)arg;
+    struct server_config* server_config = (struct server_config*)arg;
+    struct peer* peer = server_config->peer;
+    struct package_list* package_list = server_config->package_list;
     printf("peer thread initated with socket:%d,\n", peer->sock_fd);
 
     struct btide_packet* packet = create_packet(0);
@@ -173,7 +175,6 @@ void* peer_thread(void* arg) {
     // free resources and end peer connection, need to run twice for both of our cleanup functions
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
-    return;
 }
 
 // create a listening server fd
@@ -210,12 +211,15 @@ void end_peer(struct peer* peer) {
     close(peer->sock_fd);
 }
 
-int create_server(struct config* config, struct peer_list* peer_list, struct package_list* package_list, pthread_t* thread_id) {
+struct server_config* setup_config(struct config* config, struct peer_list* peer_list, struct package_list* package_list) {
     struct server_config* server_config = (struct server_config*)malloc(sizeof(struct server_config));
     server_config->config = config;
     server_config->peer_list = peer_list;
     server_config->package_list = package_list;
+    return server_config;
+}
 
+int create_server(struct server_config* server_config, pthread_t* thread_id) {
     // create a new thread for the server
     if (pthread_create(thread_id, NULL, main_server_thread, (void*)server_config)) {
         perror("pthread_create failed");
@@ -232,22 +236,20 @@ void server_cleanup(void* args) {
 }
 
 void config_cleanup(void* arg) {
-    free((struct server_config*)arg);
+    server_config_destroy((struct server_config*)arg);
 }
 
 void* main_server_thread(void* args) {
     // unpacking args
     struct server_config* server_config = (struct server_config*)args;
     struct config* config = server_config->config;
-    struct peer_list* peer_list = server_config->peer_list;
-    // struct package_list* package_list = server_config->package_list;
 
     int new_socket = 0;
     struct sockaddr_in address;
     int server_fd = create_listener(config->port); // create a listening socket
     if (server_fd <= 0) {
         puts("failed to create listener");
-        free(server_config);
+        server_config_destroy(server_config);
         return;
     }
     printf("server thread running on port %d\n", config->port);
@@ -265,14 +267,12 @@ void* main_server_thread(void* args) {
         }
 
         // double checks the peer is connected via protocal and create a new thread if valid
-        accept_new_peer(new_socket, address, peer_list);
+        accept_new_peer(new_socket, address, server_config);
     }
 
     // resources no longer needed, need to run twice for both cleanup functions
     pthread_cleanup_pop(1);
     pthread_cleanup_pop(1);
-
-    return;
 }
 
 // ping all peers
@@ -284,4 +284,11 @@ void ping_peers(struct peer_list* list) {
         head = head->next;
     }
     pthread_mutex_unlock(&(list->peerlist_lock));
+}
+
+// free up server config
+void server_config_destroy(struct server_config* server_config) {
+    free(server_config->config->directory);
+    free(server_config->config);
+    free(server_config);
 }
