@@ -21,5 +21,6 @@ void end_peer(struct peer* peer);
 void* peer_thread(void* arg);
 int create_server(struct config* config, struct peer_list* peer_list, struct package_list* package_list, pthread_t* thread_id);
 void* main_server_thread(void* args);
+void ping_peers(struct peer_list* list);
 
 #endif // SERVER_H

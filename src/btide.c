@@ -157,6 +157,7 @@ int main(int argc, char** argv) {
             // Add your list packages logic here
         } else if (strcmp(input, "PEERS") == 0) {
             printf("Connected to:\n");
+            ping_peers(peer_list);
             print_peers(peer_list);
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");

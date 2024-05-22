@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define MAX_LINE_LEN 2048
 #define MAX_IDENT 1024

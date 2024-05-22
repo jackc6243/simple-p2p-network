@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-
 struct package_list {
     struct package* head;
     struct package* tail;
@@ -14,11 +13,11 @@ struct package_list {
 struct package {
     struct bpkg_obj* bpkg;
     int is_complete;
+    struct package* next;
+    struct package* previous;
+    struct package_list* package_list;
+    pthread_mutex_t p_lock;
 };
 extern struct bpkg_obj* bpkg;
-
-int initiate_packages(int max_size, struct package_list* all_packages);
-int remove_package(struct package_list* list, char* ident);
-void add_package(struct package_list* list, struct bpkg_obj* bpkg);
 
 #endif

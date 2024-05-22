@@ -8,8 +8,10 @@
 #include <pthread.h>
 
 
-int initiate_packages(struct package_list* all_packages) {
+int initiate_packages() {
+    struct package_list* all_packages = (struct package_list*)malloc(sizeof(struct package_list));
     all_packages->head = NULL;
+    all_packages->tail = NULL;
     all_packages->length = 0;
 }
 
@@ -19,6 +21,13 @@ void add_package(struct package_list* list, struct bpkg_obj* bpkg, int is_comple
     new_package->bpkg = bpkg;
     new_package->is_completed = is_completed;
     new_package->next = NULL;
+    new_package->previous = NULL;
+    new_package->package_list = list;
+
+    if (pthread_mutex_init(&new_package->p_lock, NULL) != 0) {
+        perror("pthread_mutex_init");
+        exit(EXIT_FAILURE);
+    }
 
     if (list->head == NULL) {
         list->head = new_package;
@@ -61,7 +70,7 @@ int remove_package(struct package_list* list, char* ident) {
 // print out all packages
 void print_packages(struct package_list* list) {
     struct package* head = list->head;
-    int i = 0;
+    int i = 1;
     char complete[] = "COMPLETED";
     char incomplete[] = "INCOMPLETE";
 

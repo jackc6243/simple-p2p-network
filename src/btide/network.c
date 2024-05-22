@@ -146,11 +146,9 @@ void* peer_thread(void* arg) {
 
         // looping throgh all possible packets that could have been received
         if (packet->msg_code == PKT_MSG_ACK) {
-            printf("Packet message code is ACK\n");
             // don't have to do anything here
         } else if (packet->msg_code == PKT_MSG_ACP) {
-            printf("Packet message code is ACP\n");
-            // must reply with ACK message
+            // don't have to do anything here
         } else if (packet->msg_code == PKT_MSG_DSN) {
             printf("Packet message code is DSN\n");
             // this peer is disconnecting
@@ -275,4 +273,15 @@ void* main_server_thread(void* args) {
     pthread_cleanup_pop(1);
 
     return;
+}
+
+// ping all peers
+void ping_peers(struct peer_list* list) {
+    struct peer* head = list->head;
+    pthread_mutex_lock(&(list->peerlist_lock));
+    while (head != NULL) {
+        send_packet(head->sock_fd, PKT_MSG_PNG);
+        head = head->next;
+    }
+    pthread_mutex_unlock(&(list->peerlist_lock));
 }
