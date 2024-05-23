@@ -54,6 +54,45 @@ int get_ip_port(char** context, char* ip, int* port) {
     return TRUE;
 }
 
+// return 0 if failed, otherwise return 1 if succesful parsing and 2 if succesful parsing and offset is parsed
+int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash, int* offset) {
+    char delim[] = " \n";
+    char* tok;
+
+    // getting ip and port
+    if (get_ip_port(context, ip, port) == 0) {
+        printf("Missing arguments from command");
+        return FALSE;
+    }
+
+    // getting ident
+    tok = strtok_r(NULL, delim, context);
+    if (tok == NULL) {
+        printf("Missing arguments from command");
+        return FALSE;
+    }
+    strcpy(ident, tok);
+
+    // getting hash
+    tok = strtok_r(NULL, delim, context);
+    if (tok == NULL) {
+        printf("Missing arguments from command");
+        return FALSE;
+    }
+    strcpy(hash, tok);
+
+    // parsing offset optional
+    tok = strtok_r(NULL, delim, context);
+    if (tok != NULL) {
+        if (sscanf(tok, "%d", offset) == 1) {
+            return 2;
+        }
+    }
+
+    return TRUE;
+}
+
+
 int main(int argc, char** argv) {
     // config file path not given
     if (argc < 2) {
@@ -78,8 +117,11 @@ int main(int argc, char** argv) {
     // initating some variables and buffers for repeated use
     char* tok; char* context;
     char delim[] = " \n";
+    char ident[MAX_IDENT] = { 0 };
+    char hash[65] = { 0 };
     char ip[MAX_IP_LENGTH] = { 0 };
     struct peer* temp_peer;
+    struct package* temp_package;
     int port; int temp;
     char input[MAX_COMMAND];
     char full_path[PATH_MAX] = { 0 };
@@ -162,11 +204,8 @@ int main(int argc, char** argv) {
                 continue;
             }
 
-            // joining path together
-            sprintf(full_path, "%s/%s", config->directory, tok);
-            printf("Full path: %s\n", full_path);
-
-            bpkg = bpkg_load(full_path);
+            // loading the bpkg file
+            bpkg = bpkg_load(config->directory, tok);
             if (bpkg == NULL) {
                 puts("Unable to parse bpkg file");
                 continue;
@@ -181,17 +220,18 @@ int main(int argc, char** argv) {
             temp = 0; // temp tells us the completion state of this file
             if (strcmp(query->hashes[0], "File Exists") == 0) {
                 // we should update the merkle tree in the file
-                free(query);
                 query = bpkg_get_min_completed_hashes(bpkg);
                 if (query->len == 1 &&
-                    strncmp(query->hashes[0], bpkg->tree->all_nodes[0]->expected_hash, 64)) {
+                    strncmp(query->hashes[0], bpkg->tree->all_nodes[0]->expected_hash, 64) == 0) {
                     // file is completed
                     temp = 1;
-                    bpkg_query_destroy(query);
                 }
-            } else {
-                bpkg_query_destroy(query);
             }
+            // printf("query->len: %d, temp is %d\n", query->len, temp);
+            // printf("query->hashes[0]: %s\n", query->hashes[0]);
+            // printf("bpkg->tree->all_nodes[0]->expected_hash: %s\n", bpkg->tree->all_nodes[0]->expected_hash);
+
+            bpkg_query_destroy(query);
             add_package(package_list, bpkg, temp);
 
         } else if (strcmp(input, "REMPACKAGE") == 0) {
@@ -224,10 +264,49 @@ int main(int argc, char** argv) {
             puts("Not connected to any peers");
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");
-            // Add your fetch logic here
+            int x = get_fetch_args(&context, ip, &port, ident, hash, &temp);
+
+            // parsed args correctly
+            if (x > 0) {
+                // Trying to find peer
+                temp_peer = get_peer(peer_list, ip, port);
+                if (temp_peer == NULL) {
+                    printf("Unable to request chunk, peer not in list \n");
+                    continue;
+                }
+
+                // tring to find the package
+                temp_package = get_package(package_list, ident);
+                if (temp_package == NULL) {
+                    printf("Unable to request chunk, package is not managed\n");
+                    continue;
+                }
+
+                // trying to get all chunk hashes
+                query = bpkg_get_all_chunk_hashes_from_hash(temp_package->bpkg, hash);
+                if (query->len == 0) {
+                    bpkg_query_destroy(query);
+                    printf("Unable to request chunk, chunk hash does not belong to package\n");
+                    continue;
+                }
+
+                if (x == 2) {
+                    // offset was given
+                } else if (x == 1) {
+                    // offset was not given
+                }
+            }
         } else {
             printf("Invalid input.\n");
         }
+
+        // reset some variables
+        query = NULL;
+        temp_peer = NULL;
+        temp_package = NULL;
+        bpkg = NULL;
+        temp = 0;
+        port = 0;
     }
 
     // freeing resources

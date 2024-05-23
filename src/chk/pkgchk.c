@@ -179,7 +179,15 @@ void print_hashes_fromarray(struct merkle_tree_node** arr, int l) {
 /**
  * Loads the package for when a valid path is given
  */
-struct bpkg_obj* bpkg_load(const char* path) {
+struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
+    // obtaining path to bpkg_file
+    char* path;
+    if (directory != NULL) {
+        path = (char*)malloc(sizeof(char) * (strlen(directory) + strlen(bpkg_filename) + 2));
+        sprintf(path, "%s/%s", directory, bpkg_filename);
+    } else {
+        path = bpkg_filename;
+    }
 
     // check if path is valid
     struct stat st;
@@ -258,14 +266,15 @@ struct bpkg_obj* bpkg_load(const char* path) {
         return NULL;
     }
 
-    // print for debug
-    // print_hashes_fromarray(all_nodes, obj->nhash + obj->nchunk);
-
     obj->tree = level_order_create_tree(all_nodes, depth); // create the merkle tree
 
-    // print for debug
-    // printf("ident: %.4s, filename: %s, size: %d, nhash: %d, nchunk: %d,\n", obj->ident, obj->filename, obj->size, obj->nhash, obj->nchunk);
-    // printf("depth: %d, length: %d, last_i: %d\n", depth, (int)(pow(2, depth) - 1), obj->nhash + obj->nchunk);
+    // adding full_path to the data file
+    obj->full_path = (char*)malloc(sizeof(char) * (strlen(directory) + strlen(obj->filename) + 2));
+    sprintf(obj->full_path, "%s/%s", directory, obj->filename);
+
+    if (directory != NULL) {
+        free(path);
+    }
 
     return obj;
 }
@@ -319,7 +328,7 @@ struct bpkg_query* initiate_query(int size) {
 struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(1);
     FILE* file;
-    file = fopen(bpkg->filename, "r");
+    file = fopen(bpkg->full_path, "r");
 
     if (file != NULL) {
         // file exists
@@ -327,7 +336,7 @@ struct bpkg_query* bpkg_file_check(struct bpkg_obj* bpkg) {
         memcpy(query->hashes[0], str, sizeof(str));
     } else {
         // file doesn't exist, will creating file instead
-        file = fopen(bpkg->filename, "w");
+        file = fopen(bpkg->full_path, "w");
         // Extending file size
         ftruncate(fileno(file), bpkg->size);
         char str[] = "File Created\0";
@@ -385,10 +394,10 @@ struct bpkg_query* bpkg_get_all_chunk_hashes_from_hash(struct bpkg_obj* bpkg,
 
 struct bpkg_query* bpkg_all_chunks_from_file(struct bpkg_obj* bpkg) {
     struct bpkg_query* query = initiate_query(bpkg->nchunk);
-    FILE* file = fopen(bpkg->filename, "r");
+    FILE* file = fopen(bpkg->full_path, "r");
 
     if (file == NULL) {
-        perror("Failed to open file");
+        puts("Failed to open file");
         return NULL;
     }
 
@@ -449,9 +458,10 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
     return query;
 }
 
+// update the computed_hash of the chunks level of the merklet tree from the given all_chunks
 void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks) {
     for (int i = bpkg->nhash; i < bpkg->nhash + bpkg->nchunk; i++) {
-        memccpy(bpkg->tree->all_nodes[i]->computed_hash, all_chunks->hashes[i - bpkg->nhash], '\0', 64);
+        memcpy(bpkg->tree->all_nodes[i]->computed_hash, all_chunks->hashes[i - bpkg->nhash], 64);
     }
 }
 
@@ -548,6 +558,9 @@ void bpkg_obj_destroy(struct bpkg_obj* obj) {
     obj->filename = NULL;
     obj->tree = NULL;
     obj->size = 0;
+    if (obj->full_path) {
+        free(obj->full_path);
+    }
     free(obj);
 }
 

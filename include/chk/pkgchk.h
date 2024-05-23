@@ -26,6 +26,7 @@ struct bpkg_query {
 struct bpkg_obj {
 	char* ident;
 	char* filename;
+	char* full_path;
 	uint32_t size;
 	uint32_t nhash;
 	uint32_t nchunk;
@@ -40,7 +41,7 @@ char* strtok_r(char* str, const char* delim, char** saveptr);
 /**
  * Loads the package for when a value path is given
  */
-struct bpkg_obj* bpkg_load(const char* path);
+struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename);
 
 /**
  * Checks to see if the referenced filename in the bpkg file
@@ -109,6 +110,7 @@ void bpkg_query_destroy(struct bpkg_query* qry);
  */
 void bpkg_obj_destroy(struct bpkg_obj* obj);
 
+// update the computed_hash of the chunks level of the merklet tree from the given all_chunks
 void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks);
 
 #endif

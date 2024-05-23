@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
 	if (arg_select(argc, argv, &argselect, hash)) {
 		struct bpkg_query* qry;
-		struct bpkg_obj* obj = bpkg_load(argv[1]);
+		struct bpkg_obj* obj = bpkg_load(NULL, argv[1]);
 
 		if (!obj) {
 			puts("Unable to load pkg and tree");

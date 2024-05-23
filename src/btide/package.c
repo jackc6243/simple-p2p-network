@@ -112,11 +112,9 @@ int remove_package(struct package_list* list, char* ident) {
     while (current != NULL) {
         if (strncmp(current->bpkg->ident, ident, 20) == 0) {
             // we found the matching package, need to lock it since we are changing it
-            pthread_mutex_lock(&current->p_lock);
             if (current->previous == NULL) {
                 // package is head
                 list->head = current->next;
-                current->next->previous = NULL;
             } else {
                 current->previous->next = current->next;
             }
@@ -130,7 +128,6 @@ int remove_package(struct package_list* list, char* ident) {
 
             package_destroy(current);
             list->length--;
-            pthread_mutex_unlock(&current->p_lock);
             pthread_mutex_unlock(&(list->plist_lock));
             return TRUE;
         }
