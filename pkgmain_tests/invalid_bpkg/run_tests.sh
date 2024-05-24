@@ -14,5 +14,5 @@ for file in test*.bpkg; do
     # Print the name of the file being run
     echo "Running test on: $file"
     # Execute the binary with the name of the current file
-    "$binaryPath" "$file" | diff - expected.out
+    "$binaryPath" "$file" -all_hashes | diff -w - expected.out
 done

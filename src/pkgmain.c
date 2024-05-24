@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 		}
 
 		if (argselect == 1) {
-			qry = bpkg_get_all_hashes(obj);
+			qry = bpkg_get_all_hashes_nochunks(obj);
 			bpkg_print_hashes(qry);
 			bpkg_query_destroy(qry);
 		} else if (argselect == 2) {
@@ -76,7 +76,6 @@ int main(int argc, char** argv) {
 
 			qry = bpkg_get_min_completed_hashes(obj);
 			bpkg_print_hashes(qry);
-
 			bpkg_query_destroy(qry);
 		} else if (argselect == 4) {
 

@@ -8,9 +8,10 @@ bin
 output.txt
 file*.bpkg
 file*.data
-pkgmake
 pktval
 sha256chk
 test.c
 a.out
 error.log
+resources/
+network_test

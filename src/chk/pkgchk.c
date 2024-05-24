@@ -72,14 +72,15 @@ int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address
     char* context;
     // printf("doing %s\n", name);
     if (fgets(buffer, MAX_LINE_LEN, file)) {
-        // printf("buffer: %s\n", buffer);
+        // printf("buffer: %s", buffer);
         tok = strtok_r(buffer, delim, &context);
         // printf("tok1: %s\n", tok);
         // making sure the format is correct
-        if (strcmp(tok, name)) {
+        if (strcmp(tok, name) != 0) {
             return FALSE;
         }
         tok = strtok_r(NULL, delim, &context);
+
         // when no data is expected
         if (address == NULL) {
             if (tok == NULL) {
@@ -89,6 +90,8 @@ int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address
                 // puts("failed here");
                 return FALSE;
             }
+        } else if (tok == NULL) {
+            return FALSE;
         }
         // printf("tok2: %s,\n", tok);
 
@@ -103,6 +106,7 @@ int parse_info(char* buffer, FILE* file, char* name, char* delim, void** address
             char* data = (char*)malloc(sizeof(char) * (l + 1));
             memcpy(data, tok, l);
             data[l] = '\0'; // null terminate the string
+
             *address = data;
             // *((char**)address) = data;
         } else {
@@ -134,7 +138,13 @@ Will return 1 if succesfully parsed.
 int parse_hashes(char* buffer, FILE* file, struct merkle_tree_node** all_nodes, int start, int end, int isChunk) {
 
     for (int i = start; i < end; i++) {
-        if (fgets(buffer, MAX_LINE_LEN, file) && buffer[0] == '\t') {
+        if (fgets(buffer, MAX_LINE_LEN, file)
+            && buffer[0] == '\t'
+            ) {
+            // making sure hash not too long
+            if (!isChunk && strlen(buffer) != HASH_SIZE + 2) {
+                return FALSE;
+            }
             // For each hash, create a tree node
             all_nodes[i] = create_tree_node();
             if (isChunk) {
@@ -195,19 +205,20 @@ struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
         printf("Path invalid\n");
         return NULL;
     }
-    struct bpkg_obj* obj = (struct bpkg_obj*)malloc(sizeof(struct bpkg_obj));
+    struct bpkg_obj* obj = bpkg_initiate();
 
     FILE* file = fopen(path, "r");
     char buffer[MAX_LINE_LEN] = { 0 };
+    char delim[] = ":\n\r";
 
     // Parsing infos
     int nhash, size;
     int* nhash_ptr = &nhash; int* size_ptr = &size;
-    if (!parse_info(buffer, file, "ident", ":\n", (void**)&(obj->ident), TRUE, MAX_IDENT) ||
-        !parse_info(buffer, file, "filename", ":\n", (void**)&(obj->filename), TRUE, MAX_FILENAME) ||
-        !parse_info(buffer, file, "size", ":\n", (void**)&size_ptr, FALSE, 0) ||
-        !parse_info(buffer, file, "nhashes", ":\n", (void**)&nhash_ptr, FALSE, 0) ||
-        !parse_info(buffer, file, "hashes", ":\n", NULL, TRUE, 0)) {
+    if (!parse_info(buffer, file, "ident", delim, (void**)&(obj->ident), TRUE, MAX_IDENT) ||
+        !parse_info(buffer, file, "filename", delim, (void**)&(obj->filename), TRUE, MAX_FILENAME) ||
+        !parse_info(buffer, file, "size", delim, (void**)&size_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "nhashes", delim, (void**)&nhash_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "hashes", delim, NULL, TRUE, 0)) {
         bpkg_obj_destroy(obj);
         return NULL;
     }
@@ -226,28 +237,36 @@ struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
     obj->size = size;
 
     // Parsing Hashes
+    int all_nodes_length = ((int)pow(2, depth) - 1);
     struct merkle_tree_node** all_nodes = (struct merkle_tree_node**)
-        malloc(sizeof(struct merkle_tree_node*) * ((int)pow(2, depth) - 1));
+        malloc(sizeof(struct merkle_tree_node*) * all_nodes_length);
+    for (int i = 0; i < obj->nhash; i++) {
+        all_nodes[i] = NULL;
+    }
+
     if (all_nodes == NULL) {
         // malloc failed
         fprintf(stderr, "Malloc failed to create space for all_nodes");
         return NULL;
     }
 
+    // puts("hi-2");
     if (!parse_hashes(buffer, file, all_nodes, 0, nhash, FALSE)) {
         free_array(all_nodes, nhash);
         bpkg_obj_destroy(obj);
         return NULL;
     }
 
+    // puts("hi-1");
     // Parsing nchunk and chunk
     int nchunk;
     int* nchunk_ptr = &nchunk;
-    if (!parse_info(buffer, file, "nchunks", ":\n", (void**)&nchunk_ptr, FALSE, 0) ||
-        !parse_info(buffer, file, "chunks", ":\n", NULL, TRUE, 0)) {
+    if (!parse_info(buffer, file, "nchunks", delim, (void**)&nchunk_ptr, FALSE, 0) ||
+        !parse_info(buffer, file, "chunks", delim, NULL, TRUE, 0)) {
         bpkg_obj_destroy(obj);
         return NULL;
     }
+    // puts("hi0");
 
     // Checking nchunk is valid, it must be in the form 2^(d-1) and it must be the same h as nhash
     temp = log2(nchunk);
@@ -257,6 +276,7 @@ struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
         return NULL;
     }
     obj->nchunk = nchunk;
+    // puts("hi1");
 
     // Parsing chunks
     if (!parse_hashes(buffer, file, all_nodes, nhash, nhash + nchunk, TRUE)) {
@@ -266,6 +286,7 @@ struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
         return NULL;
     }
 
+    // puts("hi2");
     obj->tree = level_order_create_tree(all_nodes, depth); // create the merkle tree
 
     // adding full_path to the data file
@@ -365,6 +386,19 @@ struct bpkg_query* bpkg_get_all_hashes(struct bpkg_obj* bpkg) {
     return query;
 }
 
+// get all hashes without the chunks
+struct bpkg_query* bpkg_get_all_hashes_nochunks(struct bpkg_obj* bpkg) {
+    struct bpkg_query* query = initiate_query(bpkg->nhash);
+    // printf("len: %d, %d\n", query->len, bpkg->nhash);
+    for (int i = 0; i < bpkg->nhash; i++) {
+        // looping through all hashes in bpkg object.
+        // printf("i:%d,\n", i);
+        memcpy(query->hashes[i], bpkg->tree->all_nodes[i]->expected_hash, 64);
+    }
+
+    return query;
+}
+
 /**
  * Retrieves all chunk hashes given a certain an ancestor hash (or itself)
  * Example: If the root hash was given, all chunk hashes will be outputted
@@ -399,7 +433,7 @@ struct bpkg_query* bpkg_all_chunks_from_file(struct bpkg_obj* bpkg) {
     FILE* file = fopen(bpkg->full_path, "r");
 
     if (file == NULL) {
-        puts("Failed to open file");
+        perror("Failed to open file");
         return NULL;
     }
 
@@ -463,6 +497,10 @@ struct bpkg_query* bpkg_get_completed_chunks(struct bpkg_obj* bpkg) {
 // update the computed_hash of the chunks level of the merklet tree from the given all_chunks
 void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks) {
     for (int i = bpkg->nhash; i < bpkg->nhash + bpkg->nchunk; i++) {
+        if (bpkg->tree->all_nodes[i] == NULL) {
+            bpkg->tree->all_nodes[i] = create_tree_node();
+        }
+
         memcpy(bpkg->tree->all_nodes[i]->computed_hash, all_chunks->hashes[i - bpkg->nhash], 64);
     }
 }
@@ -524,6 +562,15 @@ struct bpkg_query* bpkg_get_min_completed_hashes(struct bpkg_obj* bpkg) {
 
 }
 
+// initate empty object
+struct bpkg_obj* bpkg_initiate() {
+    struct bpkg_obj* obj = (struct bpkg_obj*)malloc(sizeof(struct bpkg_obj));
+    obj->filename = NULL;
+    obj->full_path = NULL;
+    obj->ident = NULL;
+    obj->tree = NULL;
+    return obj;
+}
 
 /**
  * Deallocates the query result after it has been constructed from
@@ -555,7 +602,9 @@ void bpkg_obj_destroy(struct bpkg_obj* obj) {
     if (obj->filename) {
         free(obj->filename);
     }
-    destroy_tree(obj->tree, TRUE);
+    if (obj->tree) {
+        destroy_tree(obj->tree, TRUE);
+    }
     obj->ident = NULL;
     obj->filename = NULL;
     obj->tree = NULL;
@@ -565,5 +614,3 @@ void bpkg_obj_destroy(struct bpkg_obj* obj) {
     }
     free(obj);
 }
-
-

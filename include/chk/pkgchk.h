@@ -116,5 +116,9 @@ void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_ch
 
 struct merkle_tree_node* find_chunk(struct merkle_tree_node* root, char* hash, int offset);
 
+struct bpkg_obj* bpkg_initiate();
+
+struct bpkg_query* bpkg_get_all_hashes_nochunks(struct bpkg_obj* bpkg);
+
 #endif
 
