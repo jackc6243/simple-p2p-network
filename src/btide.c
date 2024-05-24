@@ -162,10 +162,10 @@ int main(int argc, char** argv) {
             }
             pthread_mutex_unlock(&(peer_list->peerlist_lock));
 
-            printf("trying to connect to peer %s:%d\n", ip, port);
+            // printf("trying to connect to peer %s:%d\n", ip, port);
             // attempting to connect to peer
             if (connect_new_peer(ip, port, server_config)) {
-                printf("Connection established with peer.\n");
+                printf("Connection established with peer\n");
             } else {
                 printf("Unable to connect to request peer\n");
             }
@@ -252,7 +252,7 @@ int main(int argc, char** argv) {
                 ping_peers(peer_list);
                 print_peers(peer_list);
             }
-            puts("Not connected to any peers");
+            // puts("Not connected to any peers");
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");
             temp = -1; // by default we set no offset

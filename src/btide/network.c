@@ -122,7 +122,7 @@ int accept_new_peer(int sock, struct sockaddr_in address, struct server_config* 
 }
 
 void peer_thread_cleanup(void* arg) {
-    puts("cleaning up peer");
+    // puts("cleaning up peer");
     struct peer* peer = (struct peer*)arg;
     end_peer(peer); // end peer connection
     remove_peer_direct(peer); // remove peer from peer_lists

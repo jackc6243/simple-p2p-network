@@ -145,7 +145,7 @@ void print_packages(struct package_list* list) {
     const char* temp;
 
     while (current != NULL) {
-        temp = current->is_complete ? "complete" : "incomplete";  // checking if package has been completed
+        temp = current->is_complete ? "COMPLETED" : "INCOMPLETE";  // checking if package has been completed
         printf("%d. %.32s, %s : %s\n", i, current->bpkg->ident, current->bpkg->filename, temp);
         current = current->next;  // move to the next package
         i++;
