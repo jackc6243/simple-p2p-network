@@ -59,7 +59,6 @@ struct btide_packet* check_receive(int sock_fd, int msg) {
         return NULL; // failed
     }
     free(packet);
-    printf("received packet: %d\n", msg);
     return packet;
 }
 

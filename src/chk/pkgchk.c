@@ -269,11 +269,13 @@ struct bpkg_obj* bpkg_load(char* directory, char* bpkg_filename) {
     obj->tree = level_order_create_tree(all_nodes, depth); // create the merkle tree
 
     // adding full_path to the data file
-    obj->full_path = (char*)malloc(sizeof(char) * (strlen(directory) + strlen(obj->filename) + 2));
-    sprintf(obj->full_path, "%s/%s", directory, obj->filename);
-
     if (directory != NULL) {
+        obj->full_path = (char*)malloc(sizeof(char) * (strlen(directory) + strlen(obj->filename) + 2));
+        sprintf(obj->full_path, "%s/%s", directory, obj->filename);
         free(path);
+    } else {
+        obj->full_path = (char*)malloc(sizeof(char) * (strlen(obj->filename) + 1));
+        strcpy(obj->full_path, obj->filename);
     }
 
     return obj;

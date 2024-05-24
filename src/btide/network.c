@@ -49,8 +49,7 @@ int process_fetch() {
 int init_pthread(struct server_config* server_config, int peer_socket, struct sockaddr_in address) {
     // peer has been succesfully connected, now we add to peer_list
     server_config->peer = add_peer(server_config->peer_list, peer_socket, address);
-    printf("peer added to peer list, socket fd is %d, IP is : %s, port : %d\n",
-        peer_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    // printf("peer added to peer list, socket fd is %d, IP is : %s, port : %d\n", peer_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
     // create a new thread for this peer
     if (pthread_create(&server_config->peer->thread_id, NULL, peer_thread, (void*)server_config) != 0) {
@@ -90,15 +89,12 @@ int connect_new_peer(char* ip, int port, struct server_config* server_config) {
         close(sock);
         return 0;
     }
-    puts("connection succesful\n");
 
     // making sure we follow the protocol of receiving ACP and sending ACK
     if (check_receive(sock, PKT_MSG_ACP) == NULL || send_packet(sock, PKT_MSG_ACK) == FALSE) {
         close(sock);
         return 0;
     }
-
-    puts("initating thread now\n");
 
     // connection succesful, now we create a new thread for this peer socket
     init_pthread(server_config, sock, peer_address);
@@ -141,7 +137,7 @@ void* peer_thread(void* arg) {
     struct server_config* server_config = (struct server_config*)arg;
     struct peer* peer = server_config->peer;
     struct package_list* package_list = server_config->package_list;
-    printf("peer thread initated with socket:%d,\n", peer->sock_fd);
+    // printf("peer thread initated with socket:%d,\n", peer->sock_fd);
 
     struct btide_packet* packet = create_packet(0);
 
@@ -258,7 +254,9 @@ void* main_server_thread(void* args) {
         server_config_destroy(server_config);
         return;
     }
-    printf("server thread running on port %d\n", config->port);
+
+    // debug prints
+    // printf("server thread running on port %d\n", config->port);
 
     // add cleanups
     pthread_cleanup_push(server_cleanup, (void*)&server_fd);

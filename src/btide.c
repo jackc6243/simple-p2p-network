@@ -137,7 +137,6 @@ int main(int argc, char** argv) {
 
         // Parsing commands
         if (strcmp(input, "QUIT") == 0) {
-            printf("Exiting...\n");
             terminate = 1;
             end_free_peerlist(peer_list); // terminate all peer connections
             break;
@@ -190,7 +189,6 @@ int main(int argc, char** argv) {
 
             printf("Disconnected from peer\n");
         } else if (strcmp(input, "ADDPACKAGE") == 0) {
-            printf("Adding package...\n");
             // get file path
             tok = strtok_r(NULL, delim, &context);
             if (tok == NULL) {
@@ -237,12 +235,14 @@ int main(int argc, char** argv) {
                 puts("Identifier provided does not match managed packages");
             }
 
+            puts("Package has been removed");
+
         } else if (strcmp(input, "PACKAGES") == 0) {
             pthread_mutex_lock(&package_list->plist_lock);
             if (package_list->length > 0) {
                 print_packages(package_list);
             } else {
-                puts("No packages managed.");
+                puts("No packages managed");
             }
             pthread_mutex_unlock(&package_list->plist_lock);
 
