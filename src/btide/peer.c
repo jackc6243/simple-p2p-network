@@ -116,7 +116,7 @@ void print_peers(struct peer_list* list) {
     pthread_mutex_lock(&(list->peerlist_lock));
     int i = 1;
     while (head != NULL) {
-        printf("%d. %s:%d", i, inet_ntoa(head->address.sin_addr), ntohs(head->address.sin_port));
+        printf("%d. %s:%d\n", i, inet_ntoa(head->address.sin_addr), ntohs(head->address.sin_port));
         head = head->next;
         i++;
     }

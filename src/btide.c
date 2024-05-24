@@ -248,11 +248,12 @@ int main(int argc, char** argv) {
 
         } else if (strcmp(input, "PEERS") == 0) {
             if (peer_list->length > 0) {
-                printf("Connected to:\n");
+                printf("Connected to:\n\n");
                 ping_peers(peer_list);
                 print_peers(peer_list);
+            } else {
+                puts("Not connected to any peers");
             }
-            // puts("Not connected to any peers");
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");
             temp = -1; // by default we set no offset
