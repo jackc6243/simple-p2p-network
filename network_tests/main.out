@@ -1,0 +1,18 @@
+Not connected to any peers
+Connection established with peer
+Connection established with peer
+Connection established with peer
+Connected to:
+
+1. 127.0.0.1:9112
+2. 127.0.0.1:9113
+3. 127.0.0.1:9114
+No packages managed
+Disconnected from peer
+Connected to:
+
+1. 127.0.0.1:9113
+2. 127.0.0.1:9114
+Package has been removed
+1.  f0e85d805e5e9dc07efd5b95f3b8373271ade3d4132a0eb7da426d7503d3a, sample_valid_2.dat : COMPLETED
+Main peer tests finished

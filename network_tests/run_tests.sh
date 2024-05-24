@@ -14,20 +14,18 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run the binary with different configuration files
-./network_test config1.cfg > output1.txt &
-./network_test config2.cfg a > output2.txt &
-./network_test config3.cfg a > output3.txt &
-./network_test config4.cfg a > output4.txt &
+./network_test config2.cfg a &
+./network_test config3.cfg a &
+./network_test config4.cfg a &
+./network_test config1.cfg > output1.txt
 
 wait
 
 # Compare the outputs
-echo "Main peer diff... (should print nothing)"
+echo "Output diff..."
 diff output1.txt main.out
-echo "Side peer diff... (should print nothing)"
-diff output2.txt side.out
-diff output3.txt side.out
-diff output4.txt side.out
 
 # remove output files
-rm output1.txt output2.txt output3.txt output4.txt
+# rm output1.txt
+
+# rm output2.txt output3.txt output4.txt

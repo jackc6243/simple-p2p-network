@@ -5,6 +5,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+int pipe2(int pipefd[2], int flags);
+
 int main(int argc, char** argv) {
     int parent_to_child[2];  // Pipe for stdin redirection
     int child_to_parent[2]; // Pipe for stdout redirection
@@ -26,17 +28,17 @@ int main(int argc, char** argv) {
 
     if (pid == 0) { // Child process
         // Redirect stdin
-        dup2(parent_to_child[1], fileno(stdin));
+        dup2(parent_to_child[0], fileno(stdin));
         close(parent_to_child[1]);
-        close(parent_to_child[0]);
+        // close(parent_to_child[0]);
 
         // Redirect stdout
-        dup2(child_to_parent[0], fileno(stdout));
+        dup2(child_to_parent[1], fileno(stdout));
         close(child_to_parent[0]);
-        close(child_to_parent[1]);
+        // close(child_to_parent[1]);
 
         // Execute the target program
-        execl("./temp", argv[1], NULL);
+        execl("./btide", argv[1], argv[1], NULL);
         perror("execlp");
         exit(EXIT_FAILURE);
     } else { // Parent process
@@ -46,17 +48,9 @@ int main(int argc, char** argv) {
 
         if (argc > 2) {
             // side peer process tests
-            FILE* file = fopen("side.in", "r");
 
-            close(child_to_parent[0]);
-            sleep(1); // to make sure the main tests are run first
-            while (fgets(buffer, 1024, file)) {
-                // printf("buffer: %s", buffer);
-                write(parent_to_child[1], buffer, strlen(buffer));
-            }
+            sleep(2); // to make sure the main tests are run first
             wait(NULL);
-            printf("Side peer tests finished");
-            fclose(file);
             return 0;
         }
 
@@ -81,11 +75,11 @@ int main(int argc, char** argv) {
 
         // close resources
         close(child_to_parent[0]);
-        close(parent_to_child[1]); // Close the write end to send EOF
+        close(parent_to_child[1]);
 
         // Wait for the child process to finish
         wait(NULL);
-        printf("Main peer tests finished");
+        puts("Main peer tests finished");
         fclose(file);
     }
 

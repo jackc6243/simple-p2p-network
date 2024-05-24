@@ -1,14 +1,16 @@
-buffer: PEERS
-buffer: CONNECT 127.0.0.1:9112
-buffer: CONNECT 127.0.0.1:9113
-buffer: CONNECT 127.0.0.1:9114
-buffer: PEERS
-buffer: PACKAGES
-buffer: ADDPACKAGE sample_valid_1.bpkg
-buffer: ADDPACKAGE sample_valid_2.bpkg
-buffer: DISCONNECT 127.0.0.1:9112
-buffer: PEERS
-buffer: REMPACKAGE 7655105385f0b8558b7e7a2f67ccf3a69fbbf0e85d
-buffer: PACKAGES
-buffer: QUIThi2
+Invalid input
+Connection established with peer
+Connection established with peer
+Connection established with peer
+Invalid input
+Invalid input
+Path invalid
+Unable to parse bpkg file
+Path invalid
+Unable to parse bpkg file
+Disconnected from peer
+Invalid input
+Identifier provided does not match managed packages
+Package has been removed
+Invalid input
 Main peer tests finished
