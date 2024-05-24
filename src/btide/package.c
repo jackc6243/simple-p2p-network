@@ -20,7 +20,7 @@ struct package_list* initiate_packages() {
     all_packages->length = 0;
 
     if (pthread_mutex_init(&(all_packages->plist_lock), NULL) != 0) {
-        puts("pthread_mutex_init for package list failed");
+        perror("pthread_mutex_init for package list failed");
         exit(EXIT_FAILURE);
     }
 
@@ -37,7 +37,7 @@ int add_package(struct package_list* list, struct bpkg_obj* bpkg, int is_complet
     new_package->package_list = list;
 
     if (pthread_mutex_init(&(new_package->p_lock), NULL) != 0) {
-        puts("pthread_mutex_init for package failed");
+        perror("pthread_mutex_init for package failed");
         free(new_package);
         return FALSE;
     }
@@ -160,5 +160,18 @@ void package_destroy(struct package* package) {
 
 // package list resouces
 void packagelist_destroy(struct package_list* all_packages) {
-    return;
+    pthread_mutex_lock(&all_packages->plist_lock);  // lock the list
+
+    struct package* current = all_packages->head;  // start at the head of the list
+    struct package* next;
+
+    while (current != NULL) {
+        next = current->next;  // save the next package
+        package_destroy(current);  // destroy the current package
+        current = next;  // move to the next package
+    }
+
+    pthread_mutex_unlock(&all_packages->plist_lock);  // unlock the list
+    pthread_mutex_destroy(&all_packages->plist_lock);  // destroy the list's mutex
+    free(all_packages);  // free the list
 }

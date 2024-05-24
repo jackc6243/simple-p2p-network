@@ -26,7 +26,7 @@ pkgmain: pkgmain.o $(OBJS)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
 debug: CFLAGS += $(DEBUG)
-debug: pkgmain
+debug: btide
 
 # Required for Part 2 - Make sure it outputs `btide` file
 # in your directory ./

@@ -33,39 +33,45 @@ void sigint_handler(int signum) {
 }
 
 // saves the ip and port into the given addresses
-int get_ip_port(char** context, char* ip, int* port) {
+char* get_ip_port(char** context, char* ip, int* port) {
     char delim[] = ":\n";
     char* tok;
 
     // obtaining ip
     tok = strtok_r(NULL, delim, context);
     if (tok == NULL) {
-        return FALSE;
+        // puts("no ip");
+        return NULL;
     }
     strcpy(ip, tok);
+    // printf("ip: %s\n", ip);
 
     // obtaining port number
     tok = strtok_r(NULL, delim, context);
     if (sscanf(tok, "%d", port) != 1) {
-        return FALSE;
+        // puts("no port");
+        return NULL;
     }
+    // printf("port: %d\n", *port);
 
-    return TRUE;
+    return tok;
 }
 
 // return 0 if failed, otherwise return 1 if succesful parsing and 2 if succesful parsing and offset is parsed
 int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash, int* offset) {
     char delim[] = " \n";
-    char* tok;
 
     // getting ip and port
-    if (get_ip_port(context, ip, port) == 0) {
+    char* tok = get_ip_port(context, ip, port);
+    if (tok == NULL) {
         return FALSE;
     }
 
     // getting ident
+    tok = strtok_r(tok, delim, context);
     tok = strtok_r(NULL, delim, context);
     if (tok == NULL) {
+        // puts("no ident");
         return FALSE;
     }
     strcpy(ident, tok);
@@ -76,6 +82,8 @@ int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash,
         return FALSE;
     }
     strcpy(hash, tok);
+
+    // printf("ip:%s, port:%d, ident:%.10s, hash:%.10s\n", ip, *port, ident, hash);
 
     // parsing offset optional
     tok = strtok_r(NULL, delim, context);
@@ -90,6 +98,9 @@ int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash,
 
 
 int main(int argc, char** argv) {
+    // putting all error messages into a file
+    freopen("error.log", "w", stderr);
+
     // config file path not given
     if (argc < 2) {
         puts("Please enter config file");
@@ -142,7 +153,7 @@ int main(int argc, char** argv) {
             break;
         } else if (strcmp(input, "CONNECT") == 0) {
             // handle incorrect arguments
-            if (get_ip_port(&context, ip, &port) == FALSE) {
+            if (get_ip_port(&context, ip, &port) == NULL) {
                 printf("Missing address and port argument\n");
                 continue;
             }
@@ -157,7 +168,7 @@ int main(int argc, char** argv) {
             pthread_mutex_lock(&(peer_list->peerlist_lock));
             if (peer_list->length >= peer_list->max_peers) {
                 pthread_mutex_unlock(&(peer_list->peerlist_lock));
-                printf("Reached max number of peers\n");
+                perror("Reached max number of peers\n");
                 continue;
             }
             pthread_mutex_unlock(&(peer_list->peerlist_lock));
@@ -172,7 +183,7 @@ int main(int argc, char** argv) {
 
         } else if (strcmp(input, "DISCONNECT") == 0) {
             // handle incorrect arguments
-            if (get_ip_port(&context, ip, &port) == FALSE) {
+            if (get_ip_port(&context, ip, &port) == NULL) {
                 printf("Missing address and port argument\n");
                 continue;
             }
@@ -204,11 +215,6 @@ int main(int argc, char** argv) {
             }
 
             query = bpkg_file_check(bpkg);
-            if (query == NULL) {
-                puts("Cannot open file");
-                continue;
-            }
-
             temp = 0; // temp tells us the completion state of this file
             if (strcmp(query->hashes[0], "File Exists") == 0) {
                 // we should update the merkle tree in the file
@@ -218,6 +224,10 @@ int main(int argc, char** argv) {
                     // file is completed
                     temp = 1;
                 }
+            } else {
+                // we just created the file here
+                puts("Cannot open file");
+                continue;
             }
 
             bpkg_query_destroy(query);
@@ -255,12 +265,12 @@ int main(int argc, char** argv) {
                 puts("Not connected to any peers");
             }
         } else if (strcmp(input, "FETCH") == 0) {
-            printf("Fetching...\n");
             temp = -1; // by default we set no offset
 
             // not all args were parsed
             if (get_fetch_args(&context, ip, &port, ident, hash, &temp) == 0) {
                 puts("Missing arguments from command");
+                continue;
             }
 
             // Trying to find peer
@@ -276,9 +286,10 @@ int main(int argc, char** argv) {
                 printf("Unable to request chunk, package is not managed\n");
                 continue;
             }
+            // fprintf(stderr, "root: %.5s, hash: %.5s, temp: %d\n", temp_package->bpkg->tree->root->expected_hash, hash, temp);
 
             // trying to get all chunk hashes
-            chunk_node = find_chunk(bpkg->tree->root, hash, temp);
+            chunk_node = find_chunk(temp_package->bpkg->tree->root, hash, temp);
             if (chunk_node == NULL) {
                 puts("Unable to request chunk, chunk hash does not belong to package");
                 continue;
@@ -287,7 +298,7 @@ int main(int argc, char** argv) {
             // send the request
             send_req(temp_peer, temp_package, chunk_node);
         } else {
-            puts("Invalid input.");
+            puts("Invalid input");
         }
 
         // reset some variables
@@ -302,6 +313,7 @@ int main(int argc, char** argv) {
 
     // freeing resources
     pthread_mutex_destroy(&peer_mutex);
+    packagelist_destroy(package_list);
     free(config->directory);
     free(config);
 }

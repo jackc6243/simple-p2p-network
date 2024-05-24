@@ -19,7 +19,7 @@ struct peer_list* initiate_peers(int max_peers) {
     all_peers->max_peers = max_peers;
     // mutex to prevent multiple threads from changing peer list
     if (pthread_mutex_init(&all_peers->peerlist_lock, NULL) != 0) {
-        puts("Can't initate peer mutex");
+        perror("Can't initate peer mutex");
         free(all_peers);
         return NULL;
     }

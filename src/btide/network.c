@@ -85,7 +85,7 @@ int connect_new_peer(char* ip, int port, struct server_config* server_config) {
 
     // Connect to the server
     if (connect(sock, (struct sockaddr*)&peer_address, sizeof(peer_address)) < 0) {
-        printf("Connect failed with error: %s\n", strerror(errno));
+        // fprintf(stderr, "Connect failed with error: %s\n", strerror(errno));
         close(sock);
         return 0;
     }
@@ -104,17 +104,14 @@ int connect_new_peer(char* ip, int port, struct server_config* server_config) {
 
 // initiate connection with the new peer, create a new thread for this peer and also add the peer to peer_list
 int accept_new_peer(int sock, struct sockaddr_in address, struct server_config* server_config) {
-    printf("New connection, socket fd is %d, IP is : %s, port : %d\n",
-        sock, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+    // printf("New connection, socket fd is %d, IP is : %s, port : %d\n", sock, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
-    printf("checking protocol of new peer\n");
     // making sure we follow the protocol of sending an ACP and receiving ACK
     if (send_packet(sock, PKT_MSG_ACP) == FALSE || check_receive(sock, PKT_MSG_ACK) == NULL) {
         close(sock);
         return 0;
     }
 
-    printf("protocol is fine\n");
     // connection succesful, now we create a new thread for this peer socket
     init_pthread(server_config, sock, address);
 
@@ -155,12 +152,10 @@ void* peer_thread(void* arg) {
         } else if (packet->msg_code == PKT_MSG_ACP) {
             // don't have to do anything here
         } else if (packet->msg_code == PKT_MSG_DSN) {
-            printf("Packet message code is DSN\n");
             // this peer is disconnecting
             break;
         } else if (packet->msg_code == PKT_MSG_REQ) {
             // respond with appropriate requested chunk
-            printf("Packet message code is REQ\n");
             parse_req(packet, package_list, peer); // sent the res message back
         } else if (packet->msg_code == PKT_MSG_RES) {
             parse_res(packet, package_list);
@@ -169,8 +164,6 @@ void* peer_thread(void* arg) {
             send_packet(peer->sock_fd, PKT_MSG_POG);
         } else if (packet->msg_code == PKT_MSG_POG) {
             // we do not have to do anything if we receive a random pong message
-        } else {
-            printf("Packet message code is unknown\n");
         }
     }
 
@@ -250,7 +243,7 @@ void* main_server_thread(void* args) {
     struct sockaddr_in address;
     int server_fd = create_listener(config->port); // create a listening socket
     if (server_fd <= 0) {
-        puts("failed to create listener");
+        perror("failed to create listener");
         server_config_destroy(server_config);
         return;
     }

@@ -39,10 +39,8 @@ int send_packet_direct(int sock_fd, struct btide_packet* packet) {
     nwritten = send(sock_fd, packet, sizeof(packet), 0);
     if (nwritten <= 0) {
         fprintf(stderr, "could not write entire message to client: socket fd %d\n", sock_fd);
-        free(packet);
         return 0; // failed
     }
-    free(packet);
 
     return 1;
 }
@@ -90,21 +88,24 @@ int ping_pong(int sock_fd) {
 // send a request packet for a particular chunk
 int send_req(struct peer* peer, struct package* package, struct merkle_tree_node* chunk_node) {
     struct btide_packet* packet = init_req_packet(package->bpkg->ident, chunk_node->expected_hash, (uint32_t)chunk_node->chunk_size, chunk_node->offset);
+
     return send_packet_direct(peer->sock_fd, packet);
 }
 
 // parse a request packet and send the appropriate res packets
 int parse_req(struct btide_packet* packet, struct package_list* list, struct peer* peer) {
     struct req_packet* req = &(packet->payload.req_packet);
+    // create packet for sending
+    struct btide_packet* output_packet = create_packet(PKT_MSG_RES);
 
     // find the package from ident
     struct package* package = get_package(list, req->ident);
     if (package == NULL) {
+        output_packet->error = 1;
+        send_packet_direct(peer->sock_fd, output_packet);
+        free(output_packet);
         return 0;
     }
-
-    // create packet for sending
-    struct btide_packet* output_packet = create_packet(PKT_MSG_RES);
 
     // find the chunk requested by the expected hash
     struct merkle_tree_node* chunk_node = find_chunk(package->bpkg->tree->root, req->chunk_hash, req->file_offset);
@@ -120,14 +121,14 @@ int parse_req(struct btide_packet* packet, struct package_list* list, struct pee
     // open the file
     FILE* file = fopen(package->bpkg->full_path, "rb");
     if (file == NULL) {
-        puts("Error opening file");
+        perror("Error opening file");
         free(output_packet);
         return 0;
     }
 
     // Move the file pointer to the desired offset
     if (fseek(file, req->file_offset, SEEK_SET) != 0) {
-        puts("Error seeking in file");
+        perror("Error seeking in file");
         fclose(file);
         free(output_packet);
         return 0;
@@ -142,7 +143,7 @@ int parse_req(struct btide_packet* packet, struct package_list* list, struct pee
         // reading the data from file
         uint16_t bytes_read = fread(output_packet->payload.res_packet.data, 1, data_size, file);
         if (bytes_read != data_size) {
-            puts("Error reading file");
+            perror("Error reading file");
             break;
         }
         // setting the res packet
@@ -179,7 +180,7 @@ int parse_res(struct btide_packet* packet, struct package_list* list) {
     // open the file
     FILE* file = fopen(package->bpkg->full_path, "r+b");
     if (file == NULL) {
-        puts("Error opening file");
+        perror("Error opening file");
         return 0;
     }
 
@@ -188,7 +189,7 @@ int parse_res(struct btide_packet* packet, struct package_list* list) {
 
     // Move the file pointer to the required chunk + the offset in the chunk
     if (fseek(file, chunk_node->offset + res->file_offset, SEEK_SET) != 0) {
-        puts("Error seeking in file");
+        perror("Error seeking in file");
         fclose(file);
         free(output_packet);
         return 0;
@@ -198,7 +199,7 @@ int parse_res(struct btide_packet* packet, struct package_list* list) {
     pthread_mutex_lock(&package->p_lock);
     size_t bytes_written = fwrite(res->data, 1, res->data_len, file);
     if (bytes_written != res->data_len) {
-        puts("Error writing to file");
+        perror("Error writing to file");
         fclose(file);
         free(output_packet);
         return 0;
@@ -207,7 +208,7 @@ int parse_res(struct btide_packet* packet, struct package_list* list) {
     // Update the merkletree as this potentially change the completion state
     // First move the file pointer to the beginning of chunk node
     if (fseek(file, chunk_node->offset, SEEK_SET) != 0) {
-        puts("Error seeking in file");
+        perror("Error seeking in file");
         fclose(file);
         free(output_packet);
         return 0;
