@@ -43,7 +43,7 @@ peer.o: src/btide/peer.c include/net/peer.h include/net/packet.h
 package.o: src/btide/package.c include/net/package.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-packet.o: src/btide/packet.c include/net/packet.h
+packet.o: src/btide/packet.c include/net/packet.h include/tree/merkletree.h include/chk/pkgchk.h include/crypt/sha256.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 btide.o: src/btide.c include/chk/pkgchk.h include/net/packet.h include/net/config.h include/net/network.h

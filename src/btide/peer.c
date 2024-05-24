@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 
+// initiate new peer
 struct peer_list* initiate_peers(int max_peers) {
     struct peer_list* all_peers = (struct peer_list*)malloc(sizeof(struct peer_list));
     all_peers->head = NULL;

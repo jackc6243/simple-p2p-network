@@ -98,6 +98,25 @@ struct merkle_tree* level_order_create_tree(struct merkle_tree_node* arr[], int 
     return tree;
 }
 
+// find chunk node from hash, offset can be null
+struct merkle_tree_node* find_chunk(struct merkle_tree_node* root, char* hash, int offset) {
+    // base case where we are at chunks
+    if (root->is_leaf) {
+        if (strncmp(hash, root->expected_hash, 64) == 0
+            && (offset < 0 || root->offset == offset)) {
+            return root;
+        } else {
+            return NULL;
+        }
+    }
+
+    struct merkle_tree_node* node = find_chunk(root->left, hash, offset);
+    if (node == NULL) {
+        return find_chunk(root->right, hash, offset);
+    }
+    return node;
+}
+
 /*
 Returns the node with the hash given to us. Also saves the depth of the hash to the address given by height.
 */

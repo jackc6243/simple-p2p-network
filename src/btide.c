@@ -15,7 +15,6 @@
 #define MAX_THREADS 2048
 #define MAX_COMMAND 5540
 #define MAX_IP_LENGTH 30
-#define PATH_MAX 200
 
 #define TRUE 1
 #define FALSE 0
@@ -61,14 +60,12 @@ int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash,
 
     // getting ip and port
     if (get_ip_port(context, ip, port) == 0) {
-        printf("Missing arguments from command");
         return FALSE;
     }
 
     // getting ident
     tok = strtok_r(NULL, delim, context);
     if (tok == NULL) {
-        printf("Missing arguments from command");
         return FALSE;
     }
     strcpy(ident, tok);
@@ -76,7 +73,6 @@ int get_fetch_args(char** context, char* ip, int* port, char* ident, char* hash,
     // getting hash
     tok = strtok_r(NULL, delim, context);
     if (tok == NULL) {
-        printf("Missing arguments from command");
         return FALSE;
     }
     strcpy(hash, tok);
@@ -112,21 +108,19 @@ int main(int argc, char** argv) {
         exit(config->status);
     }
 
-    printf("directory:%s, max_peers:%d, port:%d\n", config->directory, config->max_peers, config->port);
-
     // initating some variables and buffers for repeated use
     char* tok; char* context;
     char delim[] = " \n";
     char ident[MAX_IDENT] = { 0 };
     char hash[65] = { 0 };
     char ip[MAX_IP_LENGTH] = { 0 };
-    struct peer* temp_peer;
-    struct package* temp_package;
     int port; int temp;
     char input[MAX_COMMAND];
-    char full_path[PATH_MAX] = { 0 };
+    struct package* temp_package;
+    struct peer* temp_peer;
     struct bpkg_obj* bpkg;
     struct bpkg_query* query;
+    struct merkle_tree_node* chunk_node;
 
     // setup packages, peer_list, configurations and listening server
     package_list = initiate_packages();
@@ -227,9 +221,6 @@ int main(int argc, char** argv) {
                     temp = 1;
                 }
             }
-            // printf("query->len: %d, temp is %d\n", query->len, temp);
-            // printf("query->hashes[0]: %s\n", query->hashes[0]);
-            // printf("bpkg->tree->all_nodes[0]->expected_hash: %s\n", bpkg->tree->all_nodes[0]->expected_hash);
 
             bpkg_query_destroy(query);
             add_package(package_list, bpkg, temp);
@@ -264,46 +255,45 @@ int main(int argc, char** argv) {
             puts("Not connected to any peers");
         } else if (strcmp(input, "FETCH") == 0) {
             printf("Fetching...\n");
-            int x = get_fetch_args(&context, ip, &port, ident, hash, &temp);
+            temp = -1; // by default we set no offset
 
-            // parsed args correctly
-            if (x > 0) {
-                // Trying to find peer
-                temp_peer = get_peer(peer_list, ip, port);
-                if (temp_peer == NULL) {
-                    printf("Unable to request chunk, peer not in list \n");
-                    continue;
-                }
-
-                // tring to find the package
-                temp_package = get_package(package_list, ident);
-                if (temp_package == NULL) {
-                    printf("Unable to request chunk, package is not managed\n");
-                    continue;
-                }
-
-                // trying to get all chunk hashes
-                query = bpkg_get_all_chunk_hashes_from_hash(temp_package->bpkg, hash);
-                if (query->len == 0) {
-                    bpkg_query_destroy(query);
-                    printf("Unable to request chunk, chunk hash does not belong to package\n");
-                    continue;
-                }
-
-                if (x == 2) {
-                    // offset was given
-                } else if (x == 1) {
-                    // offset was not given
-                }
+            // not all args were parsed
+            if (get_fetch_args(&context, ip, &port, ident, hash, &temp) == 0) {
+                puts("Missing arguments from command");
             }
+
+            // Trying to find peer
+            temp_peer = get_peer(peer_list, ip, port);
+            if (temp_peer == NULL) {
+                printf("Unable to request chunk, peer not in list \n");
+                continue;
+            }
+
+            // tring to find the package
+            temp_package = get_package(package_list, ident);
+            if (temp_package == NULL) {
+                printf("Unable to request chunk, package is not managed\n");
+                continue;
+            }
+
+            // trying to get all chunk hashes
+            chunk_node = find_chunk(bpkg->tree->root, hash, temp);
+            if (chunk_node == NULL) {
+                puts("Unable to request chunk, chunk hash does not belong to package");
+                continue;
+            }
+
+            // send the request
+            send_req(temp_peer, temp_package, chunk_node);
         } else {
-            printf("Invalid input.\n");
+            puts("Invalid input.");
         }
 
         // reset some variables
         query = NULL;
         temp_peer = NULL;
         temp_package = NULL;
+        chunk_node = NULL;
         bpkg = NULL;
         temp = 0;
         port = 0;

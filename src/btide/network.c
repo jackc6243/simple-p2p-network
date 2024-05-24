@@ -16,6 +16,8 @@
 #include "../../include/net/network.h"
 #include "../../include/net/peer.h"
 #include "../../include/net/packet.h"
+#include "../../include/tree/merkletree.h"
+#include "../../include/chk/pkgchk.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -37,6 +39,11 @@ void set_socket_timeout(int sockfd, int seconds, int microseconds) {
         perror("Error setting send timeout");
         exit(EXIT_FAILURE);
     }
+}
+
+// process fetch command
+int process_fetch() {
+
 }
 
 int init_pthread(struct server_config* server_config, int peer_socket, struct sockaddr_in address) {
@@ -158,9 +165,9 @@ void* peer_thread(void* arg) {
         } else if (packet->msg_code == PKT_MSG_REQ) {
             // respond with appropriate requested chunk
             printf("Packet message code is REQ\n");
+            parse_req(packet, package_list, peer); // sent the res message back
         } else if (packet->msg_code == PKT_MSG_RES) {
-            // respond by updating the given chunk within our packages
-            printf("Packet message code is RES\n");
+            parse_res(packet, package_list);
         } else if (packet->msg_code == PKT_MSG_PNG) {
             // Got a ping message, needs to send pong back
             send_packet(peer->sock_fd, PKT_MSG_POG);
@@ -170,7 +177,6 @@ void* peer_thread(void* arg) {
             printf("Packet message code is unknown\n");
         }
     }
-    puts("out of loop");
 
     // free resources and end peer connection, need to run twice for both of our cleanup functions
     pthread_cleanup_pop(1);

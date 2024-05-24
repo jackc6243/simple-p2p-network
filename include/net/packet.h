@@ -2,13 +2,15 @@
 #define NETPKT_H
 
 #include <stdint.h>
+#include "../tree/merkletree.h"
+#include "./package.h"
+#include "./peer.h"
+#include "../../include/chk/pkgchk.h"
 
-#define PAYLOAD_MAX (4092)
 #define IDENT_SIZE (1024)
-#define CHUNK_HASH_SIZE (64)
 #define OFFSET_SIZE (4)
-#define DATA_LEN_SIZE (2)
-#define MAX_DATA_PACK_SIZE (2998)
+#define MAX_DATA_SIZE (2998)
+#define CHUNK_HASH_SIZE (64)
 
 #define PKT_MSG_ACK 0x0c
 #define PKT_MSG_ACP 0x02
@@ -19,16 +21,24 @@
 #define PKT_MSG_POG 0x00
 
 
-struct data_packet {
-    uint8_t file_offset[OFFSET_SIZE];
-    uint8_t data[MAX_DATA_PACK_SIZE];
-    uint8_t data_len[DATA_LEN_SIZE];
-    uint8_t ident[IDENT_SIZE];
-}__attribute__((packed));
+struct res_packet {
+    uint32_t file_offset;
+    uint16_t data_len;
+    char data[MAX_DATA_SIZE];
+    char chunk_hash[CHUNK_HASH_SIZE];
+    char ident[IDENT_SIZE];
+};
+
+struct req_packet {
+    uint32_t file_offset;
+    uint32_t data_len;
+    char chunk_hash[CHUNK_HASH_SIZE];
+    char ident[IDENT_SIZE];
+};
 
 union btide_payload {
-    uint8_t data[PAYLOAD_MAX];
-    struct data_packet packet_res_req;
+    struct res_packet res_packet;
+    struct req_packet req_packet;
 };
 
 struct btide_packet {
@@ -41,5 +51,11 @@ struct btide_packet* create_packet(int message);
 int send_packet(int sock_fd, int msg);
 struct btide_packet* check_receive(int sock_fd, int msg);
 int ping_pong(int sock_fd);
+struct btide_packet* init_req_packet(char* ident, char* hash, uint32_t data_len, uint32_t offset);
+struct btide_packet* set_res_packet(struct btide_packet* packet, char* data, char* ident, char* hash, uint16_t data_len, uint32_t offset);
+int send_packet_direct(int sock_fd, struct btide_packet* packet);
+int send_req(struct peer* peer, struct package* package, struct merkle_tree_node* chunk_node);
+int parse_res(struct btide_packet* packet, struct package_list* list);
+int parse_req(struct btide_packet* packet, struct package_list* list, struct peer* peer);
 
 #endif

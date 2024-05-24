@@ -29,5 +29,6 @@ struct merkle_tree_node* find_hash(struct merkle_tree_node* root, char* hash, in
 void get_min_hashes(struct merkle_tree_node* root, char** arr, int* index);
 int get_chunk_from_hash(struct merkle_tree_node* root, char** arr, int i);
 void compute_all_hashes(struct merkle_tree_node* root);
+struct merkle_tree_node* find_chunk(struct merkle_tree_node* root, char* hash, int offset);
 
 #endif
