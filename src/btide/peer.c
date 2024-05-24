@@ -120,7 +120,6 @@ void print_peers(struct peer_list* list) {
         head = head->next;
         i++;
     }
-    printf("\n");
     pthread_mutex_unlock(&(list->peerlist_lock));
 }
 
