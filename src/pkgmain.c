@@ -35,12 +35,7 @@ int arg_select(int argc, char** argv, int* asel, char* harg) {
 		strncpy(harg, argv[3], SHA256_HEX_LEN);
 	}
 	if (strcmp(cursor, "-file_check") == 0) {
-		// if (argc < 4) {
-		// 	puts("filename not provided");
-		// 	exit(1);
-		// }
 		*asel = 5;
-		// strncpy(harg, argv[3], SHA256_HEX_LEN);
 	}
 	return *asel;
 }
@@ -67,9 +62,6 @@ int main(int argc, char** argv) {
 			puts("Unable to load pkg and tree");
 			exit(1);
 		}
-
-		// debug
-		// printf("ident: %.4s, filename: %s, size: %d, nhash: %d,nchunk: %d\n", obj->ident, obj->filename, obj->size, obj->nhash, obj->nchunk);
 
 		if (argselect == 1) {
 			qry = bpkg_get_all_hashes(obj);

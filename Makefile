@@ -16,7 +16,7 @@ sha256.o: src/crypt/sha256.c include/crypt/sha256.h
 merkletree.o: src/tree/merkletree.c include/tree/merkletree.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
-pkgchk.o: src/chk/pkgchk.c include/chk/pkgchk.h
+pkgchk.o: src/chk/pkgchk.c include/chk/pkgchk.h include/crypt/sha256.h include/tree/merkletree.h
 	$(CC) -c $< $(INCLUDE) $(CFLAGS) $(LDFLAGS)
 
 pkgmain.o: src/pkgmain.c include/chk/pkgchk.h include/tree/merkletree.h include/crypt/sha256.h

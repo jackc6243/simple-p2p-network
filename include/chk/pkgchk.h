@@ -113,6 +113,7 @@ void bpkg_obj_destroy(struct bpkg_obj* obj);
 // update the computed_hash of the chunks level of the merklet tree from the given all_chunks
 void update_computed_chunk_hash(struct bpkg_obj* bpkg, struct bpkg_query* all_chunks);
 
+
 struct merkle_tree_node* find_chunk(struct merkle_tree_node* root, char* hash, int offset);
 
 #endif
